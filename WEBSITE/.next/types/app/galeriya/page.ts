@@ -1,4 +1,4 @@
-// File: /Users/georgiapostolov/Desktop/Little Wonders Gifts /WEBSITE/src/app/galeriya/page.tsx
+// File: C:\Users\HP\Documents\GitHub\Little-wonders-gifts\WEBSITE\src\app\galeriya\page.tsx
 import * as entry from '../../../../src/app/galeriya/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

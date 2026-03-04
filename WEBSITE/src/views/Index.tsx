@@ -3,7 +3,6 @@ import {
   Gift,
   Star,
   Baby,
-  Package,
   Heart,
   Sparkles,
   MessageCircle,
@@ -34,11 +33,6 @@ const services = [
     title: "Клипсове за биберон",
     desc: "Персонализирани клипсове за биберон с името на бебчето — практични и красиви.",
   },
-  {
-    icon: Package,
-    title: "Подаръчни комплекти",
-    desc: "Красиво опаковани комплекти с любов — готови за подаряване.",
-  },
 ];
 
 const whyUs = [
@@ -50,12 +44,7 @@ const whyUs = [
   {
     icon: Baby,
     title: "Персонализирано за твоето бебче",
-    desc: "Добавяме име, дата или специално послание.",
-  },
-  {
-    icon: Gift,
-    title: "Красиво опаковане",
-    desc: "Всеки подарък идва в стилна, готова за подаряване опаковка.",
+    desc: "С името на твоето съкровище, всеки продукт става още по-личен и специален.",
   },
   {
     icon: MessageCircle,
@@ -159,7 +148,7 @@ const Index = () => {
               Създаваме уникални подаръци, които носят радост на малки и големи.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {services.map((s) => (
               <div
                 key={s.title}
@@ -226,7 +215,7 @@ const Index = () => {
               Защо да <span className="text-primary">избереш нас</span> 💝
             </h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {whyUs.map((item) => (
               <div
                 key={item.title}
