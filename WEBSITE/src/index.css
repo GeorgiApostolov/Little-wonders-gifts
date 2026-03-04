@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 215 38% 34%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 38% 34%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 38% 34%;
+
+    --primary: 330 86% 70%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 197 65% 79%;
+    --secondary-foreground: 215 34% 36%;
+
+    --muted: 197 71% 91%;
+    --muted-foreground: 215 24% 50%;
+
+    --accent: 197 71% 91%;
+    --accent-foreground: 215 34% 36%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 197 30% 85%;
+    --input: 197 30% 85%;
+    --ring: 330 86% 70%;
+
+    --radius: 0.75rem;
+
+    /* Custom tokens */
+    --baby-blue: 197 65% 79%;
+    --baby-blue-light: 197 71% 91%;
+    --rose: 330 86% 70%;
+    --rose-dark: 330 81% 60%;
+    --pastel-yellow: 48 96% 89%;
+    --pastel-mint: 149 89% 90%;
+    --pastel-lilac: 250 87% 95%;
+
+    --sidebar-background: 197 71% 96%;
+    --sidebar-foreground: 215 32% 36%;
+    --sidebar-primary: 330 86% 70%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 250 87% 95%;
+    --sidebar-accent-foreground: 215 32% 36%;
+    --sidebar-border: 197 40% 86%;
+    --sidebar-ring: 330 81% 60%;
+  }
+
+  .dark {
+    --background: 210 60% 97%;
+    --foreground: 215 38% 36%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 38% 36%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 38% 36%;
+    --primary: 330 86% 70%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 197 65% 86%;
+    --secondary-foreground: 215 34% 36%;
+    --muted: 197 71% 92%;
+    --muted-foreground: 215 24% 50%;
+    --accent: 250 87% 95%;
+    --accent-foreground: 215 34% 36%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 197 35% 84%;
+    --input: 197 35% 84%;
+    --ring: 330 86% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
+}
+
+/* Decorative animations */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(3deg);
+  }
+}
+
+@keyframes bounce-soft {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float-slow 4s ease-in-out infinite;
+}
+
+.animate-bounce-soft {
+  animation: bounce-soft 2s ease-in-out infinite;
+}
+
+/* Background pattern */
+.bg-dots-pattern {
+  background-image: radial-gradient(
+    circle,
+    hsl(var(--baby-blue) / 0.3) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+.bg-stars-pattern {
+  background-image: radial-gradient(
+    circle,
+    hsl(var(--rose) / 0.15) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 32px 32px;
+}
