@@ -1,13 +1,8 @@
 {
-<<<<<<< HEAD
-  "/page": "app/page.js",
-  "/kontakti/page": "app/kontakti/page.js"
-=======
   "/_not-found/page": "app/_not-found/page.js",
-  "/uslugi/page": "app/uslugi/page.js",
-  "/page": "app/page.js",
   "/kontakti/page": "app/kontakti/page.js",
-  "/galeriya/page": "app/galeriya/page.js",
-  "/za-nas/page": "app/za-nas/page.js"
->>>>>>> 1e22711ca9771ee925335f30502f575730339907
+  "/page": "app/page.js",
+  "/za-nas/page": "app/za-nas/page.js",
+  "/uslugi/page": "app/uslugi/page.js",
+  "/galeriya/page": "app/galeriya/page.js"
 }

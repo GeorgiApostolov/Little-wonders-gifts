@@ -6,8 +6,25 @@ import "../index.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://littlewondersgifts.com"),
+  icons: {
+    icon: [
+      { url: "/favicons/favicon.ico" },
+      { url: "/favicons/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicons/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      {
+        url: "/favicons/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
+    shortcut: ["/favicons/favicon.ico"],
+  },
+  manifest: "/favicons/site.webmanifest",
   title: {
-    default: "Little Wonders Gifts — Ръчно изработени подаръци за бебета и деца",
+    default:
+      "Little Wonders Gifts — Ръчно изработени подаръци за бебета и деца",
     template: "%s | Little Wonders Gifts",
   },
   description:
@@ -27,9 +44,14 @@ export const metadata: Metadata = {
     description:
       "Уникални ръчно изработени подаръци за бебета и деца — керамични фигури, клипсове за биберон, подаръчни комплекти.",
   },
+  themeColor: "#ffffff",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="bg">
       <body>

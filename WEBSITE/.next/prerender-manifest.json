@@ -1,11 +1,7 @@
 {
   "version": 4,
-<<<<<<< HEAD
-  "routes": {},
-=======
   "routes": {
-    "/_not-found": {
-      "initialStatus": 404,
+    "/uslugi": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -18,32 +14,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/_not-found",
-      "dataRoute": "/_not-found.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/za-nas": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/za-nas",
-      "dataRoute": "/za-nas.rsc",
+      "srcRoute": "/uslugi",
+      "dataRoute": "/uslugi.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -77,7 +49,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/kontakti": {
+    "/za-nas": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -90,8 +62,33 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/kontakti",
-      "dataRoute": "/kontakti.rsc",
+      "srcRoute": "/za-nas",
+      "dataRoute": "/za-nas.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/_not-found": {
+      "initialStatus": 404,
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/_not-found",
+      "dataRoute": "/_not-found.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -125,7 +122,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/uslugi": {
+    "/kontakti": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -138,8 +135,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/uslugi",
-      "dataRoute": "/uslugi.rsc",
+      "srcRoute": "/kontakti",
+      "dataRoute": "/kontakti.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -150,12 +147,11 @@
       ]
     }
   },
->>>>>>> 1e22711ca9771ee925335f30502f575730339907
   "dynamicRoutes": {},
   "notFoundRoutes": [],
   "preview": {
-    "previewModeId": "0bd8517bec5e2e4c059c8193fba3b362",
-    "previewModeSigningKey": "2d864dfaa7dbdb03f49d04d06a70879f5597a2f84e2f618b9afc9f2c186992d6",
-    "previewModeEncryptionKey": "6b6e5897d6e35ce32713b0a9427217121179926793f679da52496ac7e3560898"
+    "previewModeId": "5c97198960c81590bccf765f4c9ce6a0",
+    "previewModeSigningKey": "27ef98e2c74e7f382fe40458176ae6b3078b601c64f849bb75aee252a6e057b6",
+    "previewModeEncryptionKey": "5b7348e55bf6e16aa6627c2e3fd1c034bde3925dfeaf4d13cc852e983cb40e88"
   }
 }
