@@ -1,13 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Gift, Palette, Baby, Package } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Gift, Palette, Baby, Package, Clock3, PartyPopper } from "lucide-react";
 
 const serviceCards = [
   {
@@ -33,33 +27,6 @@ const serviceCards = [
     title: "Подаръчни комплекти",
     desc: "Красиво подредени комплекти с внимателно подбрани продукти. Готови за подаряване — просто добави усмивка!",
     cta: "Виж комплектите",
-  },
-];
-
-const faqs = [
-  {
-    q: "Колко време отнема изработката?",
-    a: "Обикновено 5–7 работни дни, в зависимост от сложността на поръчката. При спешни поръчки се свържете с нас за индивидуална уговорка.",
-  },
-  {
-    q: "Мога ли да избера цветове и дизайн?",
-    a: "Разбира се! Можете да изберете цветове, шрифтове и дизайн. Ще ви изпратим визуализация за одобрение преди изработката.",
-  },
-  {
-    q: "Подходящи ли са продуктите за бебета?",
-    a: "Да! Всички наши продукти са изработени от сертифицирани, нетоксични материали, безопасни за бебета и малки деца.",
-  },
-  {
-    q: "Как мога да поръчам?",
-    a: "Свържете се с нас чрез контактната форма, Instagram или Facebook. Ще обсъдим вашите пожелания и ще ви изпратим оферта.",
-  },
-  {
-    q: "Правите ли доставки в цяла България?",
-    a: "Да, доставяме в цялата страна чрез куриер. Също така е възможно лично предаване в София.",
-  },
-  {
-    q: "Мога ли да поръчам за фирмено събитие?",
-    a: "Да! Изработваме корпоративни подаръци и комплекти за събития. Свържете се с нас за специална оферта при по-големи количества.",
   },
 ];
 
@@ -104,28 +71,52 @@ const Services = () => {
         </div>
       </section>
 
-      {/* FAQ */}
+      {/* Service Info */}
       <section className="py-16 md:py-24 bg-background">
-        <div className="container mx-auto px-4 max-w-2xl">
+        <div className="container mx-auto px-4 max-w-5xl">
           <h2 className="font-heading font-extrabold text-3xl md:text-4xl text-center mb-10">
-            Често задавани <span className="text-primary">въпроси</span> ❓
+            Полезна <span className="text-primary">информация</span> ℹ️
           </h2>
-          <Accordion type="single" collapsible className="space-y-3">
-            {faqs.map((faq, i) => (
-              <AccordionItem
-                key={i}
-                value={`faq-${i}`}
-                className="border rounded-2xl px-5 bg-card"
-              >
-                <AccordionTrigger className="font-heading font-bold text-left hover:no-underline">
-                  {faq.q}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground leading-relaxed">
-                  {faq.a}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-card border border-border/50 rounded-3xl p-6 text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-baby-blue-light flex items-center justify-center">
+                <Clock3 className="w-6 h-6 text-foreground" />
+              </div>
+              <h3 className="font-heading font-bold text-lg mb-2">
+                Срок на изработка
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Изработката на продуктите е обикновено между 5 и 7 работни дни,
+                според сложността на поръчката.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border/50 rounded-3xl p-6 text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-baby-blue-light flex items-center justify-center">
+                <Palette className="w-6 h-6 text-foreground" />
+              </div>
+              <h3 className="font-heading font-bold text-lg mb-2">
+                Цветове и представяне
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Цветовете ще бъдат представени предварително, за да изберете
+                най-подходящата комбинация за вашия подарък.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border/50 rounded-3xl p-6 text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-baby-blue-light flex items-center justify-center">
+                <PartyPopper className="w-6 h-6 text-foreground" />
+              </div>
+              <h3 className="font-heading font-bold text-lg mb-2">
+                Подаръци за гости
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Приемам поръчки и за подаръци за гости за кръщене, погача и
+                рожден ден.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
     </main>

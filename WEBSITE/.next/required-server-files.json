@@ -100,7 +100,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "C:\\Users\\HP\\Documents\\GitHub\\Little-wonders-gifts\\WEBSITE",
+    "outputFileTracingRoot": "C:\\Users\\HP\\Documents\\GitHub\\Little-wonders-gifts",
     "experimental": {
       "useSkewCookie": false,
       "cacheLife": {
@@ -290,11 +290,11 @@
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "C:\\Users\\HP\\Documents\\GitHub\\Little-wonders-gifts\\WEBSITE"
+      "root": "C:\\Users\\HP\\Documents\\GitHub\\Little-wonders-gifts"
     }
   },
   "appDir": "C:\\Users\\HP\\Documents\\GitHub\\Little-wonders-gifts\\WEBSITE",
-  "relativeAppDir": "",
+  "relativeAppDir": "WEBSITE",
   "files": [
     ".next\\routes-manifest.json",
     ".next\\server\\pages-manifest.json",

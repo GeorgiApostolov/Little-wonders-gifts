@@ -1,8 +1,8 @@
 {
   "/_not-found/page": "/_not-found",
-  "/galeriya/page": "/galeriya",
-  "/kontakti/page": "/kontakti",
-  "/za-nas/page": "/za-nas",
+  "/uslugi/page": "/uslugi",
   "/page": "/",
-  "/uslugi/page": "/uslugi"
+  "/kontakti/page": "/kontakti",
+  "/galeriya/page": "/galeriya",
+  "/za-nas/page": "/za-nas"
 }

@@ -75,64 +75,63 @@ const Index = () => {
   return (
     <main>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-baby-blue-light">
-        <div className="absolute inset-0 bg-dots-pattern opacity-30" />
-
+      <section className="relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-y-0 right-0 w-full md:w-[76%] lg:w-[66%]">
-            <img
-              src="/background_image.webp"
-              alt=""
-              aria-hidden="true"
-              className="h-full w-full object-contain object-right-bottom opacity-95"
-            />
-          </div>
-          <div className="absolute inset-y-0 left-0 w-full bg-gradient-to-r from-baby-blue-light via-baby-blue-light/85 to-transparent" />
+          <img
+            src="/background.jpg"
+            alt=""
+            aria-hidden="true"
+            className="h-full w-full object-cover object-center"
+          />
         </div>
+        <div className="absolute inset-0 bg-baby-blue-light/75" />
+        <div className="absolute inset-0 bg-dots-pattern opacity-20" />
 
-        <div className="container mx-auto px-4 py-20 md:py-28 relative z-10 text-center lg:pr-[34%]">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <Sparkles className="w-5 h-5 text-primary animate-bounce-soft" />
-            <span className="text-sm font-medium text-muted-foreground">
-              Ръчно изработени с любов
-            </span>
-            <Sparkles className="w-5 h-5 text-primary animate-bounce-soft" />
-          </div>
-
-          <h1 className="font-heading font-extrabold text-4xl md:text-6xl leading-tight mb-6 text-foreground">
-            Сладки подаръци,{" "}
-            <span className="text-primary">създадени с любов</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-            Уникални ръчно изработени подаръци за бебета и деца — всяко парче е
-            специално, точно като твоето малко чудо.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
-            <Link
-              href="/galeriya"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-primary text-primary-foreground font-heading font-bold text-base hover:bg-rose-dark transition-all hover:scale-105 shadow-lg shadow-primary/25"
-            >
-              🎨 Разгледай галерията
-            </Link>
-            <Link
-              href="/kontakti"
-              className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-background text-foreground font-heading font-bold text-base border-2 border-border hover:border-primary hover:text-primary transition-all hover:scale-105"
-            >
-              ✉️ Пиши ни
-            </Link>
-          </div>
-
-          {/* Badges */}
-          <div className="flex flex-wrap justify-center gap-3">
-            {badges.map((b) => (
-              <span
-                key={b}
-                className="px-4 py-2 rounded-full bg-background/80 backdrop-blur-sm text-sm font-medium border border-border/50 shadow-sm"
-              >
-                {b}
+        <div className="container mx-auto px-4 py-20 md:py-28 relative z-10 text-center">
+          <div className="max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 mb-6">
+              <Sparkles className="w-5 h-5 text-primary animate-bounce-soft" />
+              <span className="text-sm font-medium text-muted-foreground">
+                Ръчно изработени с любов
               </span>
-            ))}
+              <Sparkles className="w-5 h-5 text-primary animate-bounce-soft" />
+            </div>
+
+            <h1 className="font-heading font-extrabold text-4xl md:text-6xl leading-tight mb-6 text-foreground">
+              Сладки подаръци,{" "}
+              <span className="text-primary">създадени с любов</span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
+              Уникални ръчно изработени подаръци за бебета и деца — всяко парче
+              е специално, точно като твоето малко чудо.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
+              <Link
+                href="/galeriya"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-primary text-primary-foreground font-heading font-bold text-base hover:bg-rose-dark transition-all hover:scale-105 shadow-lg shadow-primary/25"
+              >
+                🎨 Разгледай галерията
+              </Link>
+              <Link
+                href="/kontakti"
+                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-background text-foreground font-heading font-bold text-base border-2 border-border hover:border-primary hover:text-primary transition-all hover:scale-105"
+              >
+                ✉️ Пиши ни
+              </Link>
+            </div>
+
+            {/* Badges */}
+            <div className="flex flex-wrap justify-center gap-3">
+              {badges.map((b) => (
+                <span
+                  key={b}
+                  className="px-4 py-2 rounded-full bg-background/80 backdrop-blur-sm text-sm font-medium border border-border/50 shadow-sm"
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
