@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Instagram, Facebook, Mail, MapPin, Send } from "lucide-react";
+import { Instagram, Facebook, Mail, Send } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -32,11 +32,11 @@ const Contacts = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.9fr] gap-10 max-w-5xl mx-auto">
           {/* Form */}
           <form
             onSubmit={handleSubmit}
-            className="bg-card rounded-3xl border border-border/50 p-8 shadow-sm"
+            className="bg-card rounded-3xl border border-border/50 p-10 shadow-sm"
           >
             <div className="space-y-5">
               <div>
@@ -100,32 +100,25 @@ const Contacts = () => {
             </div>
           </form>
 
-          {/* Info */}
           <div className="space-y-6">
-            <div className="bg-pastel-yellow/50 rounded-3xl p-6 border border-border/30">
-              <h3 className="font-heading font-bold text-lg mb-3">
-                📍 Къде сме
-              </h3>
-              <div className="flex items-start gap-3 text-sm text-muted-foreground">
-                <MapPin className="w-5 h-5 mt-0.5 shrink-0" />
-                <span>София, България</span>
-              </div>
-            </div>
-
-            <div className="bg-pastel-mint/50 rounded-3xl p-6 border border-border/30">
+            <div className="bg-pastel-mint/50 rounded-3xl p-6 border border-border/30 text-center">
               <h3 className="font-heading font-bold text-lg mb-3">
                 📱 Последвай ни
               </h3>
-              <div className="flex gap-3">
+              <div className="flex justify-center gap-3">
                 <a
-                  href="#"
+                  href="https://www.instagram.com/little.wonders.gifts/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label="Instagram"
                   className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all hover:scale-110"
                 >
                   <Instagram className="w-5 h-5" />
                 </a>
                 <a
-                  href="#"
+                  href="https://www.facebook.com/profile.php?id=61574482834482"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label="Facebook"
                   className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all hover:scale-110"
                 >
@@ -148,13 +141,6 @@ const Contacts = () => {
               <p className="text-sm text-muted-foreground mt-1">
                 Обикновено до 24 часа
               </p>
-            </div>
-
-            {/* Map placeholder */}
-            <div className="rounded-3xl overflow-hidden border border-border/30 bg-muted aspect-video flex items-center justify-center">
-              <span className="text-sm text-muted-foreground">
-                🗺️ Google Maps — скоро
-              </span>
             </div>
           </div>
         </div>
