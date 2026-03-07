@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 
 const navItems = [
@@ -16,21 +14,17 @@ const navItems = [
 
 const Header = () => {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
+  const { pathname } = useLocation();
 
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center h-16 overflow-hidden">
-          <Image
+        <Link to="/" className="flex items-center h-16 overflow-hidden">
+          <img
             src="/logo.webp"
             alt="Little Wonders Gifts"
-            width={802}
-            height={318}
-            unoptimized
             className="h-14 md:h-16 w-auto object-contain"
-            priority
           />
         </Link>
 
@@ -39,7 +33,7 @@ const Header = () => {
           {navItems.map((item) => (
             <Link
               key={item.to}
-              href={item.to}
+              to={item.to}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-accent ${
                 pathname === item.to
                   ? "bg-primary text-primary-foreground"
@@ -67,7 +61,7 @@ const Header = () => {
           {navItems.map((item) => (
             <Link
               key={item.to}
-              href={item.to}
+              to={item.to}
               onClick={() => setOpen(false)}
               className={`block px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
                 pathname === item.to

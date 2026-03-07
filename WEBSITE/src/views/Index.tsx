@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import {
   Gift,
   Star,
@@ -102,19 +102,19 @@ const Index = () => {
               <span className="text-primary">създадени с любов</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-              Уникални ръчно изработени подаръци за бебета и деца — всяко творение
-              е специално, точно като твоето малко чудо.
+              Уникални ръчно изработени подаръци за бебета и деца — всяко
+              творение е специално, точно като твоето малко чудо.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
               <Link
-                href="/galeriya"
+                to="/galeriya"
                 className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-primary text-primary-foreground font-heading font-bold text-base hover:bg-rose-dark transition-all hover:scale-105 shadow-lg shadow-primary/25"
               >
                 🎨 Разгледай галерията
               </Link>
               <Link
-                href="/kontakti"
+                to="/kontakti"
                 className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-background text-foreground font-heading font-bold text-base border-2 border-border hover:border-primary hover:text-primary transition-all hover:scale-105"
               >
                 ✉️ Пиши ни
@@ -197,7 +197,7 @@ const Index = () => {
           </div>
           <div className="text-center mt-8">
             <Link
-              href="/galeriya"
+              to="/galeriya"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-heading font-bold hover:bg-rose-dark transition-all hover:scale-105"
             >
               Виж цялата галерия →
@@ -274,7 +274,7 @@ const Index = () => {
             Пиши ни и ще създадем нещо специално за твоето малко чудо!
           </p>
           <Link
-            href="/kontakti"
+            to="/kontakti"
             className="inline-flex items-center gap-2 px-8 py-3.5 rounded-full bg-background text-foreground font-heading font-bold hover:scale-105 transition-all shadow-lg"
           >
             💌 Свържи се с нас

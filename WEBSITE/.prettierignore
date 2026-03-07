@@ -1,0 +1,4 @@
+# Prevent formatter from rewriting server rewrite rules
+.htaccess
+public/.htaccess
+backend/.htaccess
