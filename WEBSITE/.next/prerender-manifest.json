@@ -26,7 +26,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/za-nas": {
+    "/kontakti": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -39,8 +39,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/za-nas",
-      "dataRoute": "/za-nas.rsc",
+      "srcRoute": "/kontakti",
+      "dataRoute": "/kontakti.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -74,7 +74,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/kontakti": {
+    "/za-nas": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -87,8 +87,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/kontakti",
-      "dataRoute": "/kontakti.rsc",
+      "srcRoute": "/za-nas",
+      "dataRoute": "/za-nas.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",

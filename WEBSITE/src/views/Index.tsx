@@ -102,7 +102,7 @@ const Index = () => {
               <span className="text-primary">създадени с любов</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
-              Уникални ръчно изработени подаръци за бебета и деца — всяко парче
+              Уникални ръчно изработени подаръци за бебета и деца — всяко творение
               е специално, точно като твоето малко чудо.
             </p>
 
