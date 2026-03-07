@@ -1,15 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Gift, Palette, Baby, Package, Clock3, PartyPopper } from "lucide-react";
+import { Palette, Baby, Clock3, PartyPopper } from "lucide-react";
 
 const serviceCards = [
-  {
-    icon: Gift,
-    title: "Персонализирани подаръци",
-    desc: "Уникални подаръци с гравиране или бродерия на име, дата и специално послание. Перфектни за всеки повод — рожден ден, кръщене, бебешко парти.",
-    cta: "Поръчай сега",
-  },
   {
     icon: Palette,
     title: "Керамични фигури по поръчка",
@@ -21,12 +15,6 @@ const serviceCards = [
     title: "Клипсове за биберон с име",
     desc: "Персонализирани клипсове от хранителен силикон и натурално дърво. Безопасни, практични и невероятно сладки.",
     cta: "Избери цветове",
-  },
-  {
-    icon: Package,
-    title: "Подаръчни комплекти",
-    desc: "Красиво подредени комплекти с внимателно подбрани продукти. Готови за подаряване — просто добави усмивка!",
-    cta: "Виж комплектите",
   },
 ];
 
@@ -48,7 +36,7 @@ const Services = () => {
             {serviceCards.map((s) => (
               <div
                 key={s.title}
-                className="bg-card rounded-3xl border border-border/50 p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                className="bg-card rounded-3xl border border-border/50 p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col"
               >
                 <div className="w-14 h-14 mb-5 rounded-2xl bg-pastel-lilac flex items-center justify-center">
                   <s.icon className="w-7 h-7 text-foreground" />
@@ -56,12 +44,12 @@ const Services = () => {
                 <h2 className="font-heading font-bold text-xl mb-3">
                   {s.title}
                 </h2>
-                <p className="text-sm text-muted-foreground leading-relaxed mb-5">
+                <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
                   {s.desc}
                 </p>
                 <Link
                   href="/kontakti"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-rose-dark transition-all hover:scale-105"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-rose-dark transition-all hover:scale-105 self-start"
                 >
                   {s.cta} →
                 </Link>
