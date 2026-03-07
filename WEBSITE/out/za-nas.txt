@@ -4,6 +4,7 @@
 4:I[9766,[],""]
 5:I[8924,[],""]
 <<<<<<< HEAD
+<<<<<<< HEAD
 6:I[2619,["619","static/chunks/619-f09bc47e24909021.js","974","static/chunks/app/page-8e6061dd5a7ece7c.js"],""]
 e:I[7150,[],""]
 :HL["/_next/static/css/ce350d7e85146b5d.css","style"]
@@ -25,6 +26,8 @@ d:["$","$1","h",{"children":[null,[["$","$L13",null,{"children":"$L14"}],null],[
 12:{"metadata":[["$","title","0",{"children":"За нас — Little Wonders Gifts | Little Wonders Gifts"}],["$","meta","1",{"name":"description","content":"Научи повече за Little Wonders Gifts — семеен бранд за ръчно изработени подаръци за бебета и деца."}],["$","link","2",{"rel":"canonical","href":"https://littlewondersgifts.com/za-nas"}],["$","meta","3",{"property":"og:title","content":"Little Wonders Gifts — Ръчно изработени подаръци за бебета и деца"}],["$","meta","4",{"property":"og:description","content":"Уникални ръчно изработени подаръци за бебета и деца — керамични фигури, клипсове за биберон, подаръчни комплекти."}],["$","meta","5",{"property":"og:url","content":"https://littlewondersgifts.com"}],["$","meta","6",{"property":"og:type","content":"website"}],["$","meta","7",{"name":"twitter:card","content":"summary"}],["$","meta","8",{"name":"twitter:title","content":"Little Wonders Gifts — Ръчно изработени подаръци за бебета и деца"}],["$","meta","9",{"name":"twitter:description","content":"Уникални ръчно изработени подаръци за бебета и деца — керамични фигури, клипсове за биберон, подаръчни комплекти."}]],"error":null,"digest":"$undefined"}
 17:"$12:metadata"
 =======
+=======
+>>>>>>> 74192564adca8e62ed3bd84c70ddd125d039ccb0
 6:I[2619,["619","static/chunks/619-f09bc47e24909021.js","974","static/chunks/app/page-b01adc3daad3bd75.js"],""]
 7:I[1356,["619","static/chunks/619-f09bc47e24909021.js","674","static/chunks/674-4d546d9ed7f0e558.js","198","static/chunks/198-427f8d595c64e07c.js","177","static/chunks/app/layout-55de2b16c09707c4.js"],"Image"]
 f:I[7150,[],""]
@@ -47,4 +50,7 @@ e:["$","$1","h",{"children":[null,[["$","$L14",null,{"children":"$L15"}],null],[
 19:I[622,[],"IconMark"]
 13:{"metadata":[["$","title","0",{"children":"За нас — Little Wonders Gifts | Little Wonders Gifts"}],["$","meta","1",{"name":"description","content":"Научи повече за Little Wonders Gifts — семеен бранд за ръчно изработени подаръци за бебета и деца."}],["$","link","2",{"rel":"manifest","href":"/favicons/site.webmanifest","crossOrigin":"$undefined"}],["$","link","3",{"rel":"canonical","href":"https://littlewondersgifts.com/za-nas"}],["$","meta","4",{"property":"og:title","content":"Little Wonders Gifts — Ръчно изработени подаръци за бебета и деца"}],["$","meta","5",{"property":"og:description","content":"Уникални ръчно изработени подаръци за бебета и деца — керамични фигури, клипсове за биберон, подаръчни комплекти."}],["$","meta","6",{"property":"og:url","content":"https://littlewondersgifts.com"}],["$","meta","7",{"property":"og:type","content":"website"}],["$","meta","8",{"name":"twitter:card","content":"summary"}],["$","meta","9",{"name":"twitter:title","content":"Little Wonders Gifts — Ръчно изработени подаръци за бебета и деца"}],["$","meta","10",{"name":"twitter:description","content":"Уникални ръчно изработени подаръци за бебета и деца — керамични фигури, клипсове за биберон, подаръчни комплекти."}],["$","link","11",{"rel":"shortcut icon","href":"/favicons/favicon.ico"}],["$","link","12",{"rel":"icon","href":"/favicons/favicon.ico"}],["$","link","13",{"rel":"icon","href":"/favicons/favicon-16x16.png","sizes":"16x16","type":"image/png"}],["$","link","14",{"rel":"icon","href":"/favicons/favicon-32x32.png","sizes":"32x32","type":"image/png"}],["$","link","15",{"rel":"apple-touch-icon","href":"/favicons/apple-touch-icon.png","sizes":"180x180","type":"image/png"}],["$","$L19","16",{}]],"error":null,"digest":"$undefined"}
 18:"$13:metadata"
+<<<<<<< HEAD
+>>>>>>> 74192564adca8e62ed3bd84c70ddd125d039ccb0
+=======
 >>>>>>> 74192564adca8e62ed3bd84c70ddd125d039ccb0
