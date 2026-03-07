@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, Heart } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const navItems = [
   { label: "Начало", to: "/" },
@@ -21,11 +22,16 @@ const Header = () => {
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <Heart className="w-7 h-7 text-primary fill-primary group-hover:scale-110 transition-transform" />
-          <span className="font-heading font-extrabold text-xl text-foreground">
-            Little Wonders <span className="text-primary">Gifts</span>
-          </span>
+        <Link href="/" className="flex items-center h-16 overflow-hidden">
+          <Image
+            src="/logo.webp"
+            alt="Little Wonders Gifts"
+            width={802}
+            height={318}
+            unoptimized
+            className="h-14 md:h-16 w-auto object-contain"
+            priority
+          />
         </Link>
 
         {/* Desktop nav */}

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Heart, Instagram, Facebook, Mail } from "lucide-react";
+import Image from "next/image";
+import { Instagram, Facebook, Mail } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -8,11 +9,15 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <Heart className="w-6 h-6 text-primary fill-primary" />
-              <span className="font-heading font-extrabold text-lg">
-                Little Wonders <span className="text-primary">Gifts</span>
-              </span>
+            <Link href="/" className="inline-flex items-center mb-4">
+              <Image
+                src="/logo.webp"
+                alt="Little Wonders Gifts"
+                width={802}
+                height={318}
+                unoptimized
+                className="h-24 md:h-28 w-auto object-contain"
+              />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Ръчно изработени подаръци за бебета и деца, създадени с любов и
@@ -82,8 +87,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border/30 mt-8 pt-6 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Little Wonders Gifts. Всички права
-          запазени. 💗
+          © {new Date().getFullYear()} Всички права запазени. 💗
         </div>
       </div>
     </footer>
