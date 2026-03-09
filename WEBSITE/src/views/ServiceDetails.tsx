@@ -161,6 +161,12 @@ export default function ServiceDetails() {
   const [selectedOptionId, setSelectedOptionId] = useState<string>(
     clipOptions[0].id,
   );
+  const [babyName, setBabyName] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [orderMessage, setOrderMessage] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   const backendBaseUrl = useMemo(() => {
     const configured = import.meta.env.VITE_BACKEND_BASE_URL;
@@ -274,6 +280,86 @@ export default function ServiceDetails() {
     service?.shortDescription ||
     "Няма налично подробно описание за тази услуга.";
 
+  const submitOrder = async () => {
+    if (!service || slug !== "pacifier-clips") {
+      return;
+    }
+
+    const trimmedBabyName = babyName.trim();
+    if (!trimmedBabyName) {
+      setOrderError("Моля, въведете име на бебето.");
+      setOrderMessage(null);
+      return;
+    }
+
+    if (!selectedClipOption) {
+      setOrderError("Моля, изберете комбинация за клипса.");
+      setOrderMessage(null);
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+    setOrderError(null);
+    setOrderMessage(null);
+
+    try {
+      const response = await fetch(`${backendBaseUrl}/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceSlug: slug,
+          serviceTitle: heading,
+          selectedAudience,
+          selectedOptionId: selectedClipOption.id,
+          selectedOptionLabel: selectedClipOption.label,
+          babyName: trimmedBabyName,
+          customerName: customerName.trim(),
+          customerEmail: customerEmail.trim(),
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        status?: string;
+        message?: string;
+        orderId?: string;
+        email?: {
+          sentAdmin?: boolean;
+          sentCustomer?: boolean;
+          skipped?: boolean;
+          reason?: string;
+        };
+      };
+
+      if (!response.ok || payload.status !== "ok") {
+        throw new Error(payload.message || "Неуспешно изпращане на поръчката.");
+      }
+
+      const emailNotice = payload.email?.skipped
+        ? ` Имейлът още не е активен (${payload.email.reason || "липсва SMTP конфигурация"}).`
+        : payload.email?.sentCustomer === false && customerEmail.trim()
+          ? ` Поръчката е приета, но не успяхме да пратим имейл към клиента (${payload.email.reason || "провери SMTP настройките"}).`
+          : "";
+
+      setOrderMessage(
+        `Поръчката е изпратена успешно${payload.orderId ? ` (ID: ${payload.orderId})` : ""}.${emailNotice}`,
+      );
+      setOrderError(null);
+      setCustomerName("");
+      setCustomerEmail("");
+    } catch (submitError) {
+      setOrderError(
+        submitError instanceof Error
+          ? submitError.message
+          : "Възникна проблем при изпращане на поръчката.",
+      );
+      setOrderMessage(null);
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
   return (
     <main>
       <section className="py-16 md:py-24 bg-baby-blue-light/50">
@@ -376,8 +462,88 @@ export default function ServiceDetails() {
                       </div>
                     </div>
 
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="baby-name"
+                        className="text-sm font-heading font-bold"
+                      >
+                        3) Въведи име на бебето
+                      </label>
+                      <input
+                        id="baby-name"
+                        type="text"
+                        value={babyName}
+                        onChange={(event) => setBabyName(event.target.value)}
+                        placeholder="Пример: Алекс"
+                        maxLength={20}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="customer-name"
+                        className="text-sm font-heading font-bold"
+                      >
+                        4) Твоето име (по желание)
+                      </label>
+                      <input
+                        id="customer-name"
+                        type="text"
+                        value={customerName}
+                        onChange={(event) =>
+                          setCustomerName(event.target.value)
+                        }
+                        placeholder="Пример: Мария"
+                        maxLength={80}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="customer-email"
+                        className="text-sm font-heading font-bold"
+                      >
+                        5) Имейл за потвърждение (по желание)
+                      </label>
+                      <input
+                        id="customer-email"
+                        type="email"
+                        value={customerEmail}
+                        onChange={(event) =>
+                          setCustomerEmail(event.target.value)
+                        }
+                        placeholder="example@email.com"
+                        maxLength={160}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={submitOrder}
+                      disabled={isSubmittingOrder}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isSubmittingOrder
+                        ? "Изпращаме поръчката..."
+                        : "Изпрати поръчка"}
+                    </button>
+
+                    {orderMessage ? (
+                      <p className="mt-3 text-sm text-green-700">
+                        {orderMessage}
+                      </p>
+                    ) : null}
+
+                    {orderError ? (
+                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
+                    ) : null}
+
                     <p className="text-xs text-muted-foreground">
                       Избрано: {selectedClipOption?.label}
+                      {babyName.trim() ? ` | Име: ${babyName.trim()}` : ""}
                     </p>
                   </div>
                 ) : null}

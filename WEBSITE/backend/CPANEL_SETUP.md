@@ -21,6 +21,15 @@ Use these values in cPanel Node.js App:
    - Example format: `mongodb+srv://<user>:<password>@<cluster>/<db>?retryWrites=true&w=majority`
    - Optional: `MONGODB_DB=littlewondersgifts`
    - Optional: `SERVICES_COLLECTION=services`
+   - Optional: `ORDERS_COLLECTION=orders`
+   - Optional: `ORDER_NOTIFICATION_EMAIL=info@littlewondersgifts.com`
+   - Required for email notifications:
+     - `SMTP_HOST=smtp.your-provider.com`
+     - `SMTP_PORT=587`
+     - `SMTP_SECURE=false`
+     - `SMTP_USER=mailer@littlewondersgifts.com`
+     - `SMTP_PASS=<your-password>`
+     - `SMTP_FROM_EMAIL=Little Wonders Gifts <mailer@littlewondersgifts.com>`
 3. Click `Run NPM Install` (or run `npm install` in the app root terminal).
 4. Click `Restart` (or `Start App`).
 
@@ -30,3 +39,4 @@ Use these values in cPanel Node.js App:
 - You should see `Connected`, `Node.js backend is running`, and MongoDB status.
 - Optional health check: `https://www.littlewondersgifts.com/backend/health`
 - Services API: `https://www.littlewondersgifts.com/backend/services`
+- Orders API (POST): `https://www.littlewondersgifts.com/backend/orders`

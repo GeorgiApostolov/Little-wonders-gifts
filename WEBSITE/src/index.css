@@ -126,6 +126,12 @@
   }
 }
 
+@keyframes network-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -136,6 +142,15 @@
 
 .animate-bounce-soft {
   animation: bounce-soft 2s ease-in-out infinite;
+}
+
+.network-loader-spinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 9999px;
+  border: 2px solid hsl(var(--muted-foreground) / 0.25);
+  border-top-color: hsl(var(--primary));
+  animation: network-spin 0.75s linear infinite;
 }
 
 /* Background pattern */

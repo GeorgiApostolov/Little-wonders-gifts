@@ -2,12 +2,24 @@ require("dotenv").config();
 
 const http = require("http");
 const { MongoClient } = require("mongodb");
+const nodemailer = require("nodemailer");
 
 const port = Number(process.env.PORT) || 3000;
 const host = "0.0.0.0";
 const mongoUri = process.env.MONGODB_URI || "";
 const mongoDbName = process.env.MONGODB_DB || "littlewondersgifts";
 const servicesCollectionName = process.env.SERVICES_COLLECTION || "services";
+const ordersCollectionName = process.env.ORDERS_COLLECTION || "orders";
+const notificationEmail =
+  process.env.ORDER_NOTIFICATION_EMAIL || "info@littlewondersgifts.com";
+const smtpHost = process.env.SMTP_HOST || "";
+const smtpPort = Number(process.env.SMTP_PORT) || 587;
+const smtpSecure = String(process.env.SMTP_SECURE || "false") === "true";
+const smtpUser = process.env.SMTP_USER || "";
+const smtpPass = process.env.SMTP_PASS || "";
+const smtpFromEmail = process.env.SMTP_FROM_EMAIL || "";
+const emailTimeoutMs = Number(process.env.EMAIL_TIMEOUT_MS) || 8000;
+const sofiaTimeZone = "Europe/Sofia";
 
 const defaultServices = [
   {
@@ -31,6 +43,7 @@ const defaultServices = [
 ];
 
 let mongoClient = null;
+let emailTransporter = null;
 const mongoState = {
   connected: false,
   message: mongoUri ? "Connecting..." : "MONGODB_URI is not configured",
@@ -92,6 +105,189 @@ function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+
+    req.on("data", (chunk) => {
+      chunks.push(chunk);
+    });
+
+    req.on("end", () => {
+      const rawBody = Buffer.concat(chunks).toString("utf8").trim();
+
+      if (!rawBody) {
+        resolve({});
+        return;
+      }
+
+      try {
+        resolve(JSON.parse(rawBody));
+      } catch {
+        reject(new Error("Invalid JSON body"));
+      }
+    });
+
+    req.on("error", (error) => {
+      reject(error);
+    });
+  });
+}
+
+function sanitizeText(value, maxLength) {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim().slice(0, maxLength);
+}
+
+function isValidEmail(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    }),
+  ]);
+}
+
+function getSofiaTimestamp(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: sofiaTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZoneName: "short",
+  }).formatToParts(date);
+
+  const valueByType = {};
+  for (const part of parts) {
+    if (part.type !== "literal") {
+      valueByType[part.type] = part.value;
+    }
+  }
+
+  const timeZoneName = valueByType.timeZoneName || "EET";
+  return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}:${valueByType.second} ${timeZoneName}`;
+}
+
+function getEmailTransporter() {
+  if (emailTransporter) {
+    return emailTransporter;
+  }
+
+  if (!smtpHost || !smtpUser || !smtpPass || !smtpFromEmail) {
+    return null;
+  }
+
+  emailTransporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  });
+
+  return emailTransporter;
+}
+
+async function sendOrderEmails(order) {
+  const transporter = getEmailTransporter();
+  if (!transporter) {
+    return {
+      sentAdmin: false,
+      sentCustomer: false,
+      skipped: true,
+      reason: "SMTP is not configured",
+    };
+  }
+
+  const subjectAdmin = `Нова поръчка: ${order.serviceTitle}`;
+  const adminText = [
+    "Нова поръчка в littlewondersgifts.com",
+    `Поръчка ID: ${order.orderId}`,
+    `Услуга: ${order.serviceTitle} (${order.serviceSlug})`,
+    `Тип: ${order.selectedAudience || "-"}`,
+    `Комбинация: ${order.selectedOptionLabel || "-"}`,
+    `Име на бебето: ${order.babyName || "-"}`,
+    `Клиент: ${order.customerName || "-"}`,
+    `Имейл на клиент: ${order.customerEmail || "-"}`,
+    `Създадена на: ${order.createdAt}`,
+  ].join("\n");
+
+  let sentAdmin = false;
+  let sentCustomer = false;
+  const reasons = [];
+
+  try {
+    await transporter.sendMail({
+      from: smtpFromEmail,
+      to: notificationEmail,
+      subject: subjectAdmin,
+      text: adminText,
+      replyTo: notificationEmail,
+    });
+    sentAdmin = true;
+  } catch (adminError) {
+    reasons.push(
+      `Admin email failed: ${adminError instanceof Error ? adminError.message : "Unknown error"}`,
+    );
+  }
+
+  if (order.customerEmail) {
+    const customerText = [
+      `Здравей, ${order.customerName || "приятелю"}!`,
+      "",
+      "Получихме твоята поръчка за персонализиран клипс за биберон.",
+      `Поръчка ID: ${order.orderId}`,
+      `Комбинация: ${order.selectedOptionLabel || "-"}`,
+      `Име на бебето: ${order.babyName || "-"}`,
+      "",
+      "Ще се свържем с теб възможно най-скоро.",
+      "Little Wonders Gifts",
+    ].join("\n");
+
+    try {
+      await transporter.sendMail({
+        from: smtpFromEmail,
+        to: order.customerEmail,
+        subject: "Потвърждение за поръчка - Little Wonders Gifts",
+        text: customerText,
+        replyTo: notificationEmail,
+      });
+      sentCustomer = true;
+    } catch (customerError) {
+      reasons.push(
+        `Customer email failed: ${customerError instanceof Error ? customerError.message : "Unknown error"}`,
+      );
+    }
+  }
+
+  return {
+    sentAdmin,
+    sentCustomer,
+    skipped: false,
+    reason: reasons.length > 0 ? reasons.join(" | ") : undefined,
+  };
+}
+
 async function getMongoDb() {
   if (!mongoUri) {
     throw new Error("MONGODB_URI is not configured");
@@ -115,7 +311,7 @@ async function ensureServicesSeed(db) {
     return;
   }
 
-  const now = new Date().toISOString();
+  const now = getSofiaTimestamp();
   const docs = defaultServices.map((service) => ({
     ...service,
     createdAt: now,
@@ -144,7 +340,7 @@ async function fetchActiveServiceBySlug(db, slug) {
 }
 
 async function refreshMongoState() {
-  mongoState.lastCheckedAt = new Date().toISOString();
+  mongoState.lastCheckedAt = getSofiaTimestamp();
 
   if (!mongoUri) {
     mongoState.connected = false;
@@ -208,7 +404,7 @@ const server = http.createServer(async (req, res) => {
   const { routePath, publicBasePath } = resolveRoute(url.pathname);
 
   if (routePath === "/") {
-    const now = new Date().toISOString();
+    const now = getSofiaTimestamp();
     const healthHref = `${publicBasePath}/health`;
     const mongoStatusLabel = mongoState.connected
       ? "MongoDB Atlas: Connected"
@@ -293,7 +489,8 @@ const server = http.createServer(async (req, res) => {
     sendJson(res, 200, {
       status: "ok",
       service: "little-wonders-backend",
-      timestamp: new Date().toISOString(),
+      timestamp: getSofiaTimestamp(),
+      timeZone: sofiaTimeZone,
       uptimeSeconds: Math.floor(process.uptime()),
       nodeVersion: process.version,
       mongoConnected: mongoState.connected,
@@ -325,6 +522,101 @@ const server = http.createServer(async (req, res) => {
         message,
         count: defaultServices.length,
         services: defaultServices,
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/orders" && req.method === "POST") {
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    const serviceSlug = sanitizeText(payload.serviceSlug, 80);
+    const serviceTitle = sanitizeText(payload.serviceTitle, 140);
+    const selectedAudience = sanitizeText(payload.selectedAudience, 20);
+    const selectedOptionId = sanitizeText(payload.selectedOptionId, 80);
+    const selectedOptionLabel = sanitizeText(payload.selectedOptionLabel, 160);
+    const babyName = sanitizeText(payload.babyName, 60);
+    const customerName = sanitizeText(payload.customerName, 80);
+    const customerEmailRaw = sanitizeText(
+      payload.customerEmail,
+      160,
+    ).toLowerCase();
+    const customerEmail =
+      customerEmailRaw && isValidEmail(customerEmailRaw)
+        ? customerEmailRaw
+        : "";
+
+    if (!serviceSlug || !serviceTitle || !babyName || !selectedOptionId) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Липсват задължителни данни за поръчката",
+      });
+      return;
+    }
+
+    const createdAt = getSofiaTimestamp();
+    const orderId = `LWG-${Date.now()}`;
+
+    const orderDoc = {
+      orderId,
+      serviceSlug,
+      serviceTitle,
+      selectedAudience,
+      selectedOptionId,
+      selectedOptionLabel,
+      babyName,
+      customerName,
+      customerEmail,
+      createdAt,
+      status: "new",
+    };
+
+    try {
+      const db = await getMongoDb();
+      await db.collection(ordersCollectionName).insertOne(orderDoc);
+
+      let emailResult = null;
+      try {
+        emailResult = await withTimeout(
+          sendOrderEmails(orderDoc),
+          emailTimeoutMs,
+          "Email sending timeout",
+        );
+      } catch (emailError) {
+        emailResult = {
+          sentAdmin: false,
+          sentCustomer: false,
+          skipped: false,
+          reason:
+            emailError instanceof Error
+              ? emailError.message
+              : "Unknown email error",
+        };
+      }
+
+      sendJson(res, 201, {
+        status: "ok",
+        message: "Поръчката е приета успешно",
+        orderId,
+        email: emailResult,
+      });
+      return;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown MongoDB error";
+      sendJson(res, 500, {
+        status: "error",
+        message,
       });
       return;
     }
