@@ -10,6 +10,9 @@ const mongoUri = process.env.MONGODB_URI || "";
 const mongoDbName = process.env.MONGODB_DB || "littlewondersgifts";
 const servicesCollectionName = process.env.SERVICES_COLLECTION || "services";
 const ordersCollectionName = process.env.ORDERS_COLLECTION || "orders";
+const usersCollectionName = process.env.USERS_COLLECTION || "users";
+const authJwtSecret = process.env.AUTH_JWT_SECRET || "change-me-in-production";
+const authJwtExpiresIn = process.env.AUTH_JWT_EXPIRES_IN || "7d";
 const notificationEmail =
   process.env.ORDER_NOTIFICATION_EMAIL || "info@littlewondersgifts.com";
 const smtpHost = process.env.SMTP_HOST || "";
@@ -20,6 +23,9 @@ const smtpPass = process.env.SMTP_PASS || "";
 const smtpFromEmail = process.env.SMTP_FROM_EMAIL || "";
 const emailTimeoutMs = Number(process.env.EMAIL_TIMEOUT_MS) || 8000;
 const sofiaTimeZone = "Europe/Sofia";
+
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const defaultServices = [
   {
@@ -148,6 +154,90 @@ function isValidEmail(value) {
   }
 
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function parseBearerToken(req) {
+  const header = req.headers.authorization;
+  if (typeof header !== "string") {
+    return "";
+  }
+
+  const [scheme, token] = header.split(" ");
+  if (scheme !== "Bearer" || !token) {
+    return "";
+  }
+
+  return token.trim();
+}
+
+function buildAuthResponse(user, token) {
+  return {
+    token,
+    user: {
+      userId: user.userId,
+      fullName: user.fullName,
+      email: user.email,
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt || null,
+    },
+  };
+}
+
+function signUserToken(user) {
+  return jwt.sign(
+    {
+      sub: user.userId,
+      email: user.email,
+      fullName: user.fullName,
+    },
+    authJwtSecret,
+    {
+      expiresIn: authJwtExpiresIn,
+    },
+  );
+}
+
+function isValidPassword(password) {
+  return typeof password === "string" && password.length >= 6;
+}
+
+function decodeAuthUserFromRequest(req) {
+  const token = parseBearerToken(req);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const payload = jwt.verify(token, authJwtSecret);
+    const userId =
+      typeof payload === "object" && payload && typeof payload.sub === "string"
+        ? payload.sub
+        : "";
+    const email =
+      typeof payload === "object" &&
+      payload &&
+      typeof payload.email === "string"
+        ? payload.email
+        : "";
+    const fullName =
+      typeof payload === "object" &&
+      payload &&
+      typeof payload.fullName === "string"
+        ? payload.fullName
+        : "";
+
+    if (!userId) {
+      return null;
+    }
+
+    return {
+      userId,
+      email,
+      fullName,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function withTimeout(promise, timeoutMs, timeoutMessage) {
@@ -566,6 +656,9 @@ const server = http.createServer(async (req, res) => {
 
     const createdAt = getSofiaTimestamp();
     const orderId = `LWG-${Date.now()}`;
+    const authUser = decodeAuthUserFromRequest(req);
+    const resolvedCustomerName = customerName || authUser?.fullName || "";
+    const resolvedCustomerEmail = customerEmail || authUser?.email || "";
 
     const orderDoc = {
       orderId,
@@ -575,10 +668,12 @@ const server = http.createServer(async (req, res) => {
       selectedOptionId,
       selectedOptionLabel,
       babyName,
-      customerName,
-      customerEmail,
+      customerName: resolvedCustomerName,
+      customerEmail: resolvedCustomerEmail,
       createdAt,
       status: "new",
+      userId: authUser?.userId || null,
+      isFromAccount: Boolean(authUser?.userId),
     };
 
     try {
@@ -617,6 +712,253 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 500, {
         status: "error",
         message,
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/orders/my" && req.method === "GET") {
+    const authUser = decodeAuthUserFromRequest(req);
+
+    if (!authUser?.userId) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Нужен е вход в профил, за да видите поръчките.",
+      });
+      return;
+    }
+
+    try {
+      const db = await getMongoDb();
+      const orders = await db
+        .collection(ordersCollectionName)
+        .find({ userId: authUser.userId }, { projection: { _id: 0 } })
+        .sort({ createdAt: -1, orderId: -1 })
+        .toArray();
+
+      sendJson(res, 200, {
+        status: "ok",
+        count: orders.length,
+        orders,
+      });
+      return;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown MongoDB error";
+      sendJson(res, 500, {
+        status: "error",
+        message,
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/auth/register" && req.method === "POST") {
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    const fullName = sanitizeText(payload.fullName, 120);
+    const email = sanitizeText(payload.email, 160).toLowerCase();
+    const password =
+      typeof payload.password === "string" ? payload.password : "";
+
+    if (!fullName || !isValidEmail(email) || !isValidPassword(password)) {
+      sendJson(res, 400, {
+        status: "error",
+        message:
+          "Невалидни данни. Името е задължително, имейлът трябва да е валиден, а паролата да е поне 6 символа.",
+      });
+      return;
+    }
+
+    try {
+      const db = await getMongoDb();
+      const usersCollection = db.collection(usersCollectionName);
+      const existingUser = await usersCollection.findOne({ email });
+
+      if (existingUser) {
+        sendJson(res, 409, {
+          status: "error",
+          message: "Вече съществува потребител с този имейл",
+        });
+        return;
+      }
+
+      const createdAt = getSofiaTimestamp();
+      const userId = `USR-${Date.now()}`;
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      const userDoc = {
+        userId,
+        fullName,
+        email,
+        passwordHash,
+        createdAt,
+        updatedAt: createdAt,
+        lastLoginAt: createdAt,
+      };
+
+      await usersCollection.insertOne(userDoc);
+
+      const token = signUserToken(userDoc);
+      sendJson(res, 201, {
+        status: "ok",
+        message: "Регистрацията е успешна",
+        ...buildAuthResponse(userDoc, token),
+      });
+      return;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown MongoDB error";
+      sendJson(res, 500, {
+        status: "error",
+        message,
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/auth/login" && req.method === "POST") {
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    const email = sanitizeText(payload.email, 160).toLowerCase();
+    const password =
+      typeof payload.password === "string" ? payload.password : "";
+
+    if (!isValidEmail(email) || !isValidPassword(password)) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден имейл или парола",
+      });
+      return;
+    }
+
+    try {
+      const db = await getMongoDb();
+      const usersCollection = db.collection(usersCollectionName);
+      const user = await usersCollection.findOne({ email });
+
+      if (!user || !user.passwordHash) {
+        sendJson(res, 401, {
+          status: "error",
+          message: "Невалиден имейл или парола",
+        });
+        return;
+      }
+
+      const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+
+      if (!passwordMatches) {
+        sendJson(res, 401, {
+          status: "error",
+          message: "Невалиден имейл или парола",
+        });
+        return;
+      }
+
+      const lastLoginAt = getSofiaTimestamp();
+      await usersCollection.updateOne(
+        { userId: user.userId },
+        {
+          $set: {
+            lastLoginAt,
+            updatedAt: lastLoginAt,
+          },
+        },
+      );
+
+      const userWithUpdatedLogin = {
+        ...user,
+        lastLoginAt,
+      };
+
+      const token = signUserToken(userWithUpdatedLogin);
+      sendJson(res, 200, {
+        status: "ok",
+        message: "Успешен вход",
+        ...buildAuthResponse(userWithUpdatedLogin, token),
+      });
+      return;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown MongoDB error";
+      sendJson(res, 500, {
+        status: "error",
+        message,
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/auth/me" && req.method === "GET") {
+    const token = parseBearerToken(req);
+
+    if (!token) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Липсва токен за достъп",
+      });
+      return;
+    }
+
+    try {
+      const payload = jwt.verify(token, authJwtSecret);
+      const userId =
+        typeof payload === "object" &&
+        payload &&
+        typeof payload.sub === "string"
+          ? payload.sub
+          : "";
+
+      if (!userId) {
+        sendJson(res, 401, {
+          status: "error",
+          message: "Невалиден токен",
+        });
+        return;
+      }
+
+      const db = await getMongoDb();
+      const user = await db
+        .collection(usersCollectionName)
+        .findOne({ userId }, { projection: { passwordHash: 0, _id: 0 } });
+
+      if (!user) {
+        sendJson(res, 404, {
+          status: "error",
+          message: "Потребителят не е намерен",
+        });
+        return;
+      }
+
+      sendJson(res, 200, {
+        status: "ok",
+        user,
+      });
+      return;
+    } catch {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Невалиден или изтекъл токен",
       });
       return;
     }

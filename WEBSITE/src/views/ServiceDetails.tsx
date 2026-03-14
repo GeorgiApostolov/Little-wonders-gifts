@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 type ServiceDetails = {
   slug: string;
@@ -152,6 +153,7 @@ const getClipPreviewDataUri = (option: ClipOption) => {
 };
 
 export default function ServiceDetails() {
+  const { user, token } = useAuth();
   const [slug, setSlug] = useState("");
   const [service, setService] = useState<ServiceDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -280,6 +282,15 @@ export default function ServiceDetails() {
     service?.shortDescription ||
     "Няма налично подробно описание за тази услуга.";
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setCustomerName((current) => current || user.fullName || "");
+    setCustomerEmail((current) => current || user.email || "");
+  }, [user]);
+
   const submitOrder = async () => {
     if (!service || slug !== "pacifier-clips") {
       return;
@@ -303,11 +314,17 @@ export default function ServiceDetails() {
     setOrderMessage(null);
 
     try {
+      const requestHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        requestHeaders.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${backendBaseUrl}/orders`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: requestHeaders,
         body: JSON.stringify({
           serviceSlug: slug,
           serviceTitle: heading,
