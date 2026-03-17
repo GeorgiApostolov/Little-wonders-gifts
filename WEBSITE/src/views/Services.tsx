@@ -1,20 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { Palette, Baby, Clock3, PartyPopper } from "lucide-react";
+import {
+  Baby,
+  Image,
+  Palette,
+  Circle,
+  Box,
+  Clock3,
+  PartyPopper,
+} from "lucide-react";
 
 const serviceCards = [
   {
-    icon: Palette,
-    title: "Керамични фигури по поръчка",
-    desc: "Ръчно рисувани керамични фигурки с любим герой, животинче или дизайн по ваш избор. Всяка фигура е уникат.",
-    cta: "Научи повече",
-  },
-  {
     icon: Baby,
-    title: "Клипсове за биберон с име",
+    title: "Клипсове за биберон",
     desc: "Персонализирани клипсове от хранителен силикон и натурално дърво. Безопасни, практични и невероятно сладки.",
     cta: "Избери цветове",
+  },
+  {
+    icon: Image,
+    title: "Рамка за снимка",
+    desc: "Нежна рамка за снимка с име по желание на бебето. Специален спомен, който остава красив акцент в детската стая.",
+    cta: "Поръчай рамка",
+  },
+  {
+    icon: Palette,
+    title: "Платформа",
+    desc: "Декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    cta: "Виж варианти",
+  },
+  {
+    icon: Circle,
+    title: "Кръгла платформа",
+    desc: "Кръгла декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    cta: "Избери модел",
+  },
+  {
+    icon: Box,
+    title: "Кубчета",
+    desc: "Декоративни кубчета само с букви за изписване на името на бебето. Идеални за фотосесия, украса или специален повод.",
+    cta: "Направи запитване",
   },
 ];
 
@@ -32,7 +58,7 @@ const Services = () => {
               Открий как можем да създадем перфектния подарък за теб.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {serviceCards.map((s) => (
               <div
                 key={s.title}

@@ -4,7 +4,7 @@ import Services from "@/views/Services";
 export const metadata: Metadata = {
   title: "Услуги — Little Wonders Gifts",
   description:
-    "Персонализирани подаръци, керамични фигури, клипсове за биберон с име и подаръчни комплекти.",
+    "Клипсове за биберон, рамка за снимка с име по желание, декоративни платформи, кръгли платформи и кубчета за украса.",
   alternates: {
     canonical: "/uslugi",
   },
