@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const navItems = [
   { label: "Начало", to: "/" },
@@ -16,21 +15,18 @@ const navItems = [
 
 const Header = () => {
   const [open, setOpen] = useState(false);
-  const pathname = usePathname();
+  const { pathname } = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
       <div className="container mx-auto flex items-center justify-between h-16 px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center h-16 overflow-hidden">
-          <Image
+        <Link to="/" className="flex items-center h-16 overflow-hidden">
+          <img
             src="/logo.webp"
             alt="Little Wonders Gifts"
-            width={802}
-            height={318}
-            unoptimized
             className="h-14 md:h-16 w-auto object-contain"
-            priority
           />
         </Link>
 
@@ -39,7 +35,7 @@ const Header = () => {
           {navItems.map((item) => (
             <Link
               key={item.to}
-              href={item.to}
+              to={item.to}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-accent ${
                 pathname === item.to
                   ? "bg-primary text-primary-foreground"
@@ -49,6 +45,39 @@ const Header = () => {
               {item.label}
             </Link>
           ))}
+
+          {isAuthenticated ? (
+            <>
+              <Link
+                to="/profil"
+                className="ml-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {user?.fullName}
+              </Link>
+              <button
+                onClick={logout}
+                className="px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-accent text-foreground"
+                type="button"
+              >
+                Изход
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/vhod"
+                className="ml-2 px-4 py-2 rounded-full text-sm font-medium transition-all hover:bg-accent text-foreground"
+              >
+                Вход
+              </Link>
+              <Link
+                to="/registracia"
+                className="px-4 py-2 rounded-full text-sm font-medium transition-all bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Регистрация
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Mobile toggle */}
@@ -67,7 +96,7 @@ const Header = () => {
           {navItems.map((item) => (
             <Link
               key={item.to}
-              href={item.to}
+              to={item.to}
               onClick={() => setOpen(false)}
               className={`block px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
                 pathname === item.to
@@ -78,6 +107,45 @@ const Header = () => {
               {item.label}
             </Link>
           ))}
+
+          {isAuthenticated ? (
+            <>
+              <Link
+                to="/profil"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-3 rounded-2xl text-sm text-muted-foreground hover:bg-accent"
+              >
+                Влязъл: {user?.fullName}
+              </Link>
+              <button
+                onClick={() => {
+                  logout();
+                  setOpen(false);
+                }}
+                className="w-full text-left block px-4 py-3 rounded-2xl text-sm font-medium transition-all text-foreground hover:bg-accent"
+                type="button"
+              >
+                Изход
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/vhod"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-3 rounded-2xl text-sm font-medium transition-all text-foreground hover:bg-accent"
+              >
+                Вход
+              </Link>
+              <Link
+                to="/registracia"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-3 rounded-2xl text-sm font-medium transition-all bg-primary text-primary-foreground"
+              >
+                Регистрация
+              </Link>
+            </>
+          )}
         </nav>
       )}
     </header>

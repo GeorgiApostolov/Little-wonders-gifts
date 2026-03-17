@@ -1,0 +1,19 @@
+Options -Indexes
+
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+
+PassengerEnabled on
+PassengerAppRoot "/home/berkqivi/littlewondersgifts.com/backend"
+PassengerBaseURI "/backend"
+PassengerNodejs "/home/berkqivi/nodevenv/littlewondersgifts.com/backend/20/bin/node"
+PassengerAppType node
+PassengerStartupFile server.js
+
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION BEGIN
+
+<IfModule Litespeed>
+SetEnv BASE_PATH /backend
+</IfModule>
+# DO NOT REMOVE OR MODIFY. CLOUDLINUX ENV VARS CONFIGURATION END

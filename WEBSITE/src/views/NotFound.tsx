@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 const NotFound = () => {
   return (
@@ -8,7 +8,7 @@ const NotFound = () => {
         <p className="mb-4 text-xl text-muted-foreground">
           Oops! Page not found
         </p>
-        <Link href="/" className="text-primary underline hover:text-primary/90">
+        <Link to="/" className="text-primary underline hover:text-primary/90">
           Return to Home
         </Link>
       </div>

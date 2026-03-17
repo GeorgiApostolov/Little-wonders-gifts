@@ -1,5 +1,4 @@
-import Link from "next/link";
-import Image from "next/image";
+import { Link } from "react-router-dom";
 import { Instagram, Facebook, Mail } from "lucide-react";
 
 const Footer = () => {
@@ -9,13 +8,10 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <Link href="/" className="inline-flex items-center mb-4">
-              <Image
+            <Link to="/" className="inline-flex items-center mb-4">
+              <img
                 src="/logo.webp"
                 alt="Little Wonders Gifts"
-                width={802}
-                height={318}
-                unoptimized
                 className="h-24 md:h-28 w-auto object-contain"
               />
             </Link>
@@ -38,7 +34,7 @@ const Footer = () => {
               ].map((item) => (
                 <li key={item.to}>
                   <Link
-                    href={item.to}
+                    to={item.to}
                     className="text-muted-foreground hover:text-primary transition-colors"
                   >
                     {item.label}
