@@ -1,8 +1,21 @@
 "use client";
 
+<<<<<<< HEAD
+import Link from "next/link";
+import {
+  Baby,
+  Image,
+  Palette,
+  Circle,
+  Box,
+  Clock3,
+  PartyPopper,
+} from "lucide-react";
+=======
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Palette, Baby, Clock3, PartyPopper, Gift } from "lucide-react";
+>>>>>>> 8ff63f8726f4f3c555becb4446331fadbe7e68ea
 
 type ServiceItem = {
   slug: string;
@@ -15,6 +28,10 @@ type ServiceItem = {
 
 const fallbackServiceCards: ServiceItem[] = [
   {
+<<<<<<< HEAD
+    icon: Baby,
+    title: "Клипсове за биберон",
+=======
     slug: "ceramic-figures",
     icon: "palette",
     title: "Керамични фигури по поръчка",
@@ -26,9 +43,34 @@ const fallbackServiceCards: ServiceItem[] = [
     slug: "pacifier-clips",
     icon: "baby",
     title: "Клипсове за биберон с име",
+>>>>>>> 8ff63f8726f4f3c555becb4446331fadbe7e68ea
     desc: "Персонализирани клипсове от хранителен силикон и натурално дърво. Безопасни, практични и невероятно сладки.",
     cta: "Избери цветове",
     order: 2,
+  },
+  {
+    icon: Image,
+    title: "Рамка за снимка",
+    desc: "Нежна рамка за снимка с име по желание на бебето. Специален спомен, който остава красив акцент в детската стая.",
+    cta: "Поръчай рамка",
+  },
+  {
+    icon: Palette,
+    title: "Платформа",
+    desc: "Декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    cta: "Виж варианти",
+  },
+  {
+    icon: Circle,
+    title: "Кръгла платформа",
+    desc: "Кръгла декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    cta: "Избери модел",
+  },
+  {
+    icon: Box,
+    title: "Кубчета",
+    desc: "Декоративни кубчета само с букви за изписване на името на бебето. Идеални за фотосесия, украса или специален повод.",
+    cta: "Направи запитване",
   },
 ];
 
@@ -120,6 +162,26 @@ const Services = () => {
               </p>
             ) : null}
           </div>
+<<<<<<< HEAD
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {serviceCards.map((s) => (
+              <div
+                key={s.title}
+                className="bg-card rounded-3xl border border-border/50 p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col"
+              >
+                <div className="w-14 h-14 mb-5 rounded-2xl bg-pastel-lilac flex items-center justify-center">
+                  <s.icon className="w-7 h-7 text-foreground" />
+                </div>
+                <h2 className="font-heading font-bold text-xl mb-3">
+                  {s.title}
+                </h2>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">
+                  {s.desc}
+                </p>
+                <Link
+                  href="/kontakti"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-rose-dark transition-all hover:scale-105 self-start"
+=======
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {serviceCards.map((s) => {
               const Icon =
@@ -129,6 +191,7 @@ const Services = () => {
                 <div
                   key={s.slug || s.title}
                   className="bg-card rounded-3xl border border-border/50 p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col"
+>>>>>>> 8ff63f8726f4f3c555becb4446331fadbe7e68ea
                 >
                   <div className="w-14 h-14 mb-5 rounded-2xl bg-pastel-lilac flex items-center justify-center">
                     <Icon className="w-7 h-7 text-foreground" />
