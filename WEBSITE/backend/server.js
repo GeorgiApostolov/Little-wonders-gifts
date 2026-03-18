@@ -29,21 +29,12 @@ const jwt = require("jsonwebtoken");
 
 const defaultServices = [
   {
-    slug: "ceramic-figures",
-    icon: "palette",
-    title: "Керамични фигури по поръчка",
-    desc: "Ръчно рисувани керамични фигурки с любим герой, животинче или дизайн по ваш избор. Всяка фигура е уникат.",
-    cta: "Научи повече",
-    order: 1,
-    isActive: true,
-  },
-  {
     slug: "pacifier-clips",
     icon: "baby",
     title: "Клипсове за биберон с име",
     desc: "Персонализирани клипсове от хранителен силикон и натурално дърво. Безопасни, практични и невероятно сладки.",
     cta: "Избери цветове",
-    order: 2,
+    order: 1,
     isActive: true,
   },
 ];
@@ -414,7 +405,13 @@ async function ensureServicesSeed(db) {
 async function fetchActiveServices(db) {
   const collection = db.collection(servicesCollectionName);
   const services = await collection
-    .find({ isActive: { $ne: false } }, { projection: { _id: 0 } })
+    .find(
+      {
+        isActive: { $ne: false },
+        slug: { $ne: "ceramic-figures" },
+      },
+      { projection: { _id: 0 } },
+    )
     .sort({ order: 1, title: 1 })
     .toArray();
 
@@ -422,6 +419,10 @@ async function fetchActiveServices(db) {
 }
 
 async function fetchActiveServiceBySlug(db, slug) {
+  if (slug === "ceramic-figures") {
+    return null;
+  }
+
   const collection = db.collection(servicesCollectionName);
   return collection.findOne(
     { slug, isActive: { $ne: false } },
