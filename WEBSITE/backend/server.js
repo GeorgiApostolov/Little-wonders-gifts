@@ -37,6 +37,42 @@ const defaultServices = [
     order: 1,
     isActive: true,
   },
+  {
+    slug: "photo-frame",
+    icon: "image",
+    title: "Рамка за снимка",
+    desc: "Нежна рамка за снимка с име по желание на бебето. Специален спомен, който остава красив акцент в детската стая.",
+    cta: "Поръчай рамка",
+    order: 3,
+    isActive: true,
+  },
+  {
+    slug: "platform",
+    icon: "palette",
+    title: "Платформа",
+    desc: "Декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    cta: "Виж варианти",
+    order: 4,
+    isActive: true,
+  },
+  {
+    slug: "round-platform",
+    icon: "circle",
+    title: "Кръгла платформа",
+    desc: "Кръгла декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    cta: "Избери модел",
+    order: 5,
+    isActive: true,
+  },
+  {
+    slug: "blocks",
+    icon: "box",
+    title: "Кубчета",
+    desc: "Декоративни кубчета само с букви за изписване на името на бебето. Идеални за фотосесия, украса или специален повод.",
+    cta: "Направи запитване",
+    order: 6,
+    isActive: true,
+  },
 ];
 
 let mongoClient = null;
@@ -386,20 +422,22 @@ async function getMongoDb() {
 
 async function ensureServicesSeed(db) {
   const collection = db.collection(servicesCollectionName);
-  const existing = await collection.countDocuments();
-
-  if (existing > 0) {
-    return;
-  }
-
   const now = getSofiaTimestamp();
-  const docs = defaultServices.map((service) => ({
-    ...service,
-    createdAt: now,
-    updatedAt: now,
+  const operations = defaultServices.map((service) => ({
+    updateOne: {
+      filter: { slug: service.slug },
+      update: {
+        $setOnInsert: {
+          ...service,
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+      upsert: true,
+    },
   }));
 
-  await collection.insertMany(docs);
+  await collection.bulkWrite(operations, { ordered: false });
 }
 
 async function fetchActiveServices(db) {
