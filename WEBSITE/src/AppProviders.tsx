@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import NetworkLoadingIndicator from "@/components/NetworkLoadingIndicator";
+import { getBackendBaseUrl } from "@/lib/backend";
 
 type AppProvidersProps = {
   children: React.ReactNode;
@@ -12,6 +13,7 @@ type AppProvidersProps = {
 export default function AppProviders({ children }: AppProvidersProps) {
   const [queryClient] = useState(() => new QueryClient());
   const [activeFetches, setActiveFetches] = useState(0);
+  const backendBaseUrl = getBackendBaseUrl();
 
   useEffect(() => {
     const originalFetch = window.fetch.bind(window);
@@ -29,7 +31,11 @@ export default function AppProviders({ children }: AppProvidersProps) {
             ? input.href
             : input.url;
 
-      return url.startsWith("/backend") || url.includes("/backend/");
+      return (
+        url.startsWith("/backend") ||
+        url.includes("/backend/") ||
+        url.startsWith(backendBaseUrl)
+      );
     };
 
     window.fetch = async (...args) => {
@@ -51,7 +57,7 @@ export default function AppProviders({ children }: AppProvidersProps) {
     return () => {
       window.fetch = originalFetch;
     };
-  }, []);
+  }, [backendBaseUrl]);
 
   return (
     <QueryClientProvider client={queryClient}>

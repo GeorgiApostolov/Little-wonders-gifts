@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:backend": "npm --prefix backend start",
+    "dev:all": "sh -c 'npm --prefix backend start & backend_pid=$!; trap \"kill $backend_pid\" EXIT INT TERM; vite'",
     "build": "vite build && cp public/.htaccess dist/.htaccess",
     "start": "vite preview",
     "lint": "eslint .",

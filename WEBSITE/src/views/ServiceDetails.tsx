@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getBackendBaseUrl,
+  parseApiErrorMessage,
+  readJsonResponse,
+} from "@/lib/backend";
 
 type ServiceDetails = {
   slug: string;
@@ -169,15 +174,7 @@ export default function ServiceDetails() {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
-
-  const backendBaseUrl = useMemo(() => {
-    const configured = import.meta.env.VITE_BACKEND_BASE_URL;
-    if (!configured) {
-      return "/backend";
-    }
-
-    return configured.replace(/\/+$/, "");
-  }, []);
+  const backendBaseUrl = getBackendBaseUrl();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -200,14 +197,20 @@ export default function ServiceDetails() {
         const response = await fetch(
           `${backendBaseUrl}/services/${encodeURIComponent(slug)}`,
         );
+        const payload = await readJsonResponse<{
+          message?: string;
+          service?: ServiceDetails;
+        }>(response);
 
         if (!response.ok) {
           throw new Error(
-            `Service request failed with status ${response.status}`,
+            parseApiErrorMessage(
+              payload,
+              `Service request failed with status ${response.status}`,
+            ),
           );
         }
 
-        const payload = await response.json();
         const item = payload?.service;
 
         if (!item || typeof item !== "object") {
@@ -337,7 +340,7 @@ export default function ServiceDetails() {
         }),
       });
 
-      const payload = (await response.json()) as {
+      const payload = await readJsonResponse<{
         status?: string;
         message?: string;
         orderId?: string;
@@ -347,10 +350,12 @@ export default function ServiceDetails() {
           skipped?: boolean;
           reason?: string;
         };
-      };
+      }>(response);
 
       if (!response.ok || payload.status !== "ok") {
-        throw new Error(payload.message || "Неуспешно изпращане на поръчката.");
+        throw new Error(
+          parseApiErrorMessage(payload, "Неуспешно изпращане на поръчката."),
+        );
       }
 
       const emailNotice = payload.email?.skipped

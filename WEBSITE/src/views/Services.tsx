@@ -1,8 +1,13 @@
 "use client";
 
 import { Box, Baby, Circle, Image, Palette, Clock3, PartyPopper, Gift } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  getBackendBaseUrl,
+  parseApiErrorMessage,
+  readJsonResponse,
+} from "@/lib/backend";
 
 type ServiceItem = {
   slug: string;
@@ -74,19 +79,12 @@ const iconMap = {
   gift: Gift,
 } as const;
 
+const backendBaseUrl = getBackendBaseUrl();
+
 const Services = () => {
   const [serviceCards, setServiceCards] = useState<ServiceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const backendBaseUrl = useMemo(() => {
-    const configured = import.meta.env.VITE_BACKEND_BASE_URL;
-    if (!configured) {
-      return "/backend";
-    }
-
-    return configured.replace(/\/+$/, "");
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -94,11 +92,20 @@ const Services = () => {
     const loadServices = async () => {
       try {
         const response = await fetch(`${backendBaseUrl}/services`);
+        const payload = await readJsonResponse<{
+          message?: string;
+          services?: ServiceItem[];
+        }>(response);
+
         if (!response.ok) {
-          throw new Error(`Services request failed with status ${response.status}`);
+          throw new Error(
+            parseApiErrorMessage(
+              payload,
+              `Services request failed with status ${response.status}`,
+            ),
+          );
         }
 
-        const payload = await response.json();
         const services = Array.isArray(payload?.services) ? payload.services : [];
 
         if (isMounted) {
@@ -123,7 +130,7 @@ const Services = () => {
     return () => {
       isMounted = false;
     };
-  }, [backendBaseUrl]);
+  }, []);
 
   return (
     <main>
