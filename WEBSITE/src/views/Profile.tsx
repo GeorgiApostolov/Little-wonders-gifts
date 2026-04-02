@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getBackendBaseUrl,
+  parseApiErrorMessage,
+  readJsonResponse,
+} from "@/lib/backend";
 
 type AccountOrder = {
   orderId: string;
@@ -20,15 +25,7 @@ export default function Profile() {
   const [orders, setOrders] = useState<AccountOrder[]>([]);
   const [isOrdersLoading, setIsOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState<string | null>(null);
-
-  const backendBaseUrl = useMemo(() => {
-    const configured = import.meta.env.VITE_BACKEND_BASE_URL;
-    if (!configured) {
-      return "/backend";
-    }
-
-    return configured.replace(/\/+$/, "");
-  }, []);
+  const backendBaseUrl = getBackendBaseUrl();
 
   useEffect(() => {
     let isMounted = true;
@@ -49,15 +46,18 @@ export default function Profile() {
           },
         });
 
-        const payload = (await response.json()) as {
+        const payload = await readJsonResponse<{
           status?: string;
           message?: string;
           orders?: AccountOrder[];
-        };
+        }>(response);
 
         if (!response.ok || payload.status !== "ok") {
           throw new Error(
-            payload.message || "Неуспешно зареждане на поръчките.",
+            parseApiErrorMessage(
+              payload,
+              "Неуспешно зареждане на поръчките.",
+            ),
           );
         }
 

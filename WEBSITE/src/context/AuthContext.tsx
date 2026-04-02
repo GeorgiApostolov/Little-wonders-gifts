@@ -6,6 +6,11 @@ import {
   useMemo,
   useState,
 } from "react";
+import {
+  getBackendBaseUrl,
+  parseApiErrorMessage,
+  readJsonResponse,
+} from "@/lib/backend";
 
 type AuthUser = {
   userId: string;
@@ -44,37 +49,7 @@ const authTokenStorageKey = "lwg_auth_token";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function getBackendBaseUrl() {
-  const configured = import.meta.env.VITE_BACKEND_BASE_URL;
-  if (!configured) {
-    return "/backend";
-  }
-
-  return configured.replace(/\/+$/, "");
-}
-
 const backendBaseUrl = getBackendBaseUrl();
-
-function parseErrorMessage(payload: unknown, fallback: string) {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "message" in payload &&
-    typeof payload.message === "string"
-  ) {
-    return payload.message;
-  }
-
-  return fallback;
-}
-
-async function readJsonSafely(response: Response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -122,7 +97,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return;
     }
 
-    const payload = await readJsonSafely(response);
+    let payload: unknown = null;
+
+    try {
+      payload = await readJsonResponse<unknown>(response);
+    } catch {
+      logout();
+      return;
+    }
+
     if (
       payload &&
       typeof payload === "object" &&
@@ -152,10 +135,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }),
       });
 
-      const payload = await readJsonSafely(response);
+      const payload = await readJsonResponse<AuthResponsePayload>(response);
       if (!response.ok) {
         throw new Error(
-          parseErrorMessage(payload, "Регистрацията е неуспешна"),
+          parseApiErrorMessage(payload, "Регистрацията е неуспешна"),
         );
       }
 
@@ -186,9 +169,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }),
       });
 
-      const payload = await readJsonSafely(response);
+      const payload = await readJsonResponse<AuthResponsePayload>(response);
       if (!response.ok) {
-        throw new Error(parseErrorMessage(payload, "Входът е неуспешен"));
+        throw new Error(parseApiErrorMessage(payload, "Входът е неуспешен"));
       }
 
       if (
