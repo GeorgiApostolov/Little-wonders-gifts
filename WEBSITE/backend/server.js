@@ -343,6 +343,12 @@ async function sendOrderEmails(order) {
     `Услуга: ${order.serviceTitle} (${order.serviceSlug})`,
     `Тип: ${order.selectedAudience || "-"}`,
     `Комбинация: ${order.selectedOptionLabel || "-"}`,
+    ...(order.selectedClipLabel
+      ? [`Вид щипка: ${order.selectedClipLabel}`]
+      : []),
+    ...(order.selectedDecorationLabel
+      ? [`Елемент: ${order.selectedDecorationLabel}`]
+      : []),
     `Име на бебето: ${order.babyName || "-"}`,
     `Клиент: ${order.customerName || "-"}`,
     `Имейл на клиент: ${order.customerEmail || "-"}`,
@@ -372,9 +378,15 @@ async function sendOrderEmails(order) {
     const customerText = [
       `Здравей, ${order.customerName || "приятелю"}!`,
       "",
-      "Получихме твоята поръчка за персонализиран клипс за биберон.",
+      `Получихме твоята поръчка за ${order.serviceTitle || "персонализиран продукт"}.`,
       `Поръчка ID: ${order.orderId}`,
       `Комбинация: ${order.selectedOptionLabel || "-"}`,
+      ...(order.selectedClipLabel
+        ? [`Вид щипка: ${order.selectedClipLabel}`]
+        : []),
+      ...(order.selectedDecorationLabel
+        ? [`Елемент: ${order.selectedDecorationLabel}`]
+        : []),
       `Име на бебето: ${order.babyName || "-"}`,
       "",
       "Ще се свържем с теб възможно най-скоро.",
@@ -674,6 +686,14 @@ const server = http.createServer(async (req, res) => {
     const selectedAudience = sanitizeText(payload.selectedAudience, 20);
     const selectedOptionId = sanitizeText(payload.selectedOptionId, 80);
     const selectedOptionLabel = sanitizeText(payload.selectedOptionLabel, 160);
+    const selectedClipId = sanitizeText(payload.selectedClipId, 40);
+    const selectedClipLabel = sanitizeText(payload.selectedClipLabel, 80);
+    const selectedDecoration = sanitizeText(payload.selectedDecoration, 40);
+    const selectedDecorationLabel = sanitizeText(
+      payload.selectedDecorationLabel,
+      80,
+    );
+    const frameBaseStyle = sanitizeText(payload.frameBaseStyle, 40);
     const babyName = sanitizeText(payload.babyName, 60);
     const customerName = sanitizeText(payload.customerName, 80);
     const customerEmailRaw = sanitizeText(
@@ -706,6 +726,11 @@ const server = http.createServer(async (req, res) => {
       selectedAudience,
       selectedOptionId,
       selectedOptionLabel,
+      selectedClipId,
+      selectedClipLabel,
+      selectedDecoration,
+      selectedDecorationLabel,
+      frameBaseStyle,
       babyName,
       customerName: resolvedCustomerName,
       customerEmail: resolvedCustomerEmail,

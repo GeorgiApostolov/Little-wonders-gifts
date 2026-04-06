@@ -13,6 +13,8 @@ type AccountOrder = {
   serviceTitle: string;
   selectedAudience?: string;
   selectedOptionLabel?: string;
+  selectedClipLabel?: string;
+  selectedDecorationLabel?: string;
   babyName?: string;
   customerName?: string;
   customerEmail?: string;
@@ -149,6 +151,16 @@ export default function Profile() {
                   {order.selectedOptionLabel ? (
                     <p className="text-sm mb-1">
                       <strong>Комбинация:</strong> {order.selectedOptionLabel}
+                    </p>
+                  ) : null}
+                  {order.selectedClipLabel ? (
+                    <p className="text-sm mb-1">
+                      <strong>Щипка:</strong> {order.selectedClipLabel}
+                    </p>
+                  ) : null}
+                  {order.selectedDecorationLabel ? (
+                    <p className="text-sm mb-1">
+                      <strong>Елемент:</strong> {order.selectedDecorationLabel}
                     </p>
                   ) : null}
                   {order.babyName ? (

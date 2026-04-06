@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Baby,
@@ -11,13 +10,6 @@ import {
   Palette,
   PartyPopper,
 } from "lucide-react";
-=======
-"use client";
-
-import { Box, Baby, Circle, Image, Palette, Clock3, PartyPopper, Gift } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
 
 type ServiceItem = {
   slug?: string;
@@ -31,17 +23,6 @@ type ServiceItem = {
 
 const fallbackServiceCards: ServiceItem[] = [
   {
-<<<<<<< HEAD
-=======
-    slug: "ceramic-figures",
-    icon: "palette",
-    title: "Керамични фигури по поръчка",
-    desc: "Ръчно рисувани керамични фигурки с любим герой, животинче или дизайн по ваш избор. Всяка фигура е уникат.",
-    cta: "Научи повече",
-    order: 1,
-  },
-  {
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
     slug: "pacifier-clips",
     icon: "baby",
     title: "Клипсове за биберон с име",
@@ -55,11 +36,7 @@ const fallbackServiceCards: ServiceItem[] = [
     title: "Рамка за снимка",
     desc: "Нежна рамка за снимка с име по желание на бебето. Специален спомен, който остава красив акцент в детската стая.",
     cta: "Поръчай рамка",
-<<<<<<< HEAD
-    order: 2,
-=======
     order: 3,
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
   },
   {
     slug: "platform",
@@ -67,11 +44,7 @@ const fallbackServiceCards: ServiceItem[] = [
     title: "Платформа",
     desc: "Декоративна платформа, идеална за фотосесия, украса или специален повод.",
     cta: "Виж варианти",
-<<<<<<< HEAD
-    order: 3,
-=======
     order: 4,
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
   },
   {
     slug: "round-platform",
@@ -79,26 +52,15 @@ const fallbackServiceCards: ServiceItem[] = [
     title: "Кръгла платформа",
     desc: "Кръгла декоративна платформа, идеална за фотосесия, украса или специален повод.",
     cta: "Избери модел",
-<<<<<<< HEAD
-    order: 4,
-  },
-  {
-    slug: "letter-blocks",
-=======
     order: 5,
   },
   {
-    slug: "blocks",
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
+    slug: "letter-blocks",
     icon: "box",
     title: "Кубчета",
     desc: "Декоративни кубчета само с букви за изписване на името на бебето. Идеални за фотосесия, украса или специален повод.",
     cta: "Направи запитване",
-<<<<<<< HEAD
-    order: 5,
-=======
     order: 6,
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
   },
 ];
 
@@ -111,6 +73,19 @@ const iconMap = {
   party: PartyPopper,
   gift: Gift,
 } as const;
+
+const normalizeServiceSlug = (slug?: string) => {
+  if (!slug) {
+    return undefined;
+  }
+
+  return slug === "blocks" ? "letter-blocks" : slug;
+};
+
+const normalizeServiceItem = (service: ServiceItem): ServiceItem => ({
+  ...service,
+  slug: normalizeServiceSlug(service.slug),
+});
 
 const plannedImageBySlug: Record<string, string> = {
   "pacifier-clips": "/images/services/pacifier-clips.jpg",
@@ -177,14 +152,24 @@ const Services = () => {
 
         const payload = await response.json();
         const services = Array.isArray(payload?.services) ? payload.services : [];
+        const normalizedServices = services.map((service) =>
+          normalizeServiceItem(service as ServiceItem),
+        );
 
         if (isMounted) {
-          setServiceCards(services.length > 0 ? services : fallbackServiceCards);
+          setServiceCards(
+            normalizedServices.length > 0
+              ? normalizedServices
+              : fallbackServiceCards,
+          );
           setFetchError(null);
         }
       } catch (error) {
         if (isMounted) {
-          const message = error instanceof Error ? error.message : "Неуспешно зареждане на услугите";
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Неуспешно зареждане на услугите";
           setFetchError(message);
           setServiceCards(fallbackServiceCards);
         }
@@ -215,55 +200,52 @@ const Services = () => {
   return (
     <main>
       {/* Services */}
-      <section className="py-16 md:py-24 bg-baby-blue-light/50">
+      <section className="bg-baby-blue-light/50 py-16 md:py-24">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h1 className="font-heading font-extrabold text-3xl md:text-5xl mb-4">
+          <div className="mb-12 text-center">
+            <h1 className="mb-4 font-heading text-3xl font-extrabold md:text-5xl">
               Нашите <span className="text-primary">услуги</span> 🎨
             </h1>
-            <p className="text-muted-foreground max-w-xl mx-auto">
+            <p className="mx-auto max-w-xl text-muted-foreground">
               Открий как можем да създадем перфектния подарък за теб.
             </p>
             {isLoading ? (
-              <p className="text-xs text-muted-foreground mt-2">Зареждане на услуги...</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Зареждане на услуги...
+              </p>
             ) : null}
             {fetchError ? (
-              <p className="text-xs text-amber-700 mt-2">Показваме стандартните услуги. Причина: {fetchError}</p>
+              <p className="mt-2 text-xs text-amber-700">
+                Показваме стандартните услуги. Причина: {fetchError}
+              </p>
             ) : null}
           </div>
 
-<<<<<<< HEAD
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {orderedServiceCards.map((s) => {
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {orderedServiceCards.map((service) => {
               const iconKey =
-                typeof s.icon === "string" ? s.icon.toLowerCase() : "gift";
+                typeof service.icon === "string"
+                  ? service.icon.toLowerCase()
+                  : "gift";
               const Icon = iconMap[iconKey as keyof typeof iconMap] || Gift;
-              const placeholderImage = createServicePlaceholder(s.slug);
+              const slug = normalizeServiceSlug(service.slug);
+              const placeholderImage = createServicePlaceholder(slug);
               const imageSrc =
-                (typeof s.image === "string" && s.image.trim()) ||
-                (s.slug ? plannedImageBySlug[s.slug] || "" : "") ||
+                (typeof service.image === "string" && service.image.trim()) ||
+                (slug ? plannedImageBySlug[slug] || "" : "") ||
                 placeholderImage;
-=======
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {serviceCards.map((s) => {
-              const Icon = iconMap[(s.icon as keyof typeof iconMap) || "gift"] || Gift;
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
 
               return (
                 <div
-                  key={s.slug || s.title}
-<<<<<<< HEAD
-                  className="group bg-card rounded-3xl border border-border/60 overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col"
-=======
-                  className="bg-card rounded-3xl border border-border/50 p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col"
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
+                  key={slug || service.title}
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                 >
                   <div className="relative aspect-[5/4] overflow-hidden bg-muted">
                     <img
                       src={imageSrc}
-                      alt={`Снимка за ${s.title}`}
+                      alt={`Снимка за ${service.title}`}
                       loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(event) => {
                         const img = event.currentTarget;
                         img.onerror = null;
@@ -271,40 +253,29 @@ const Services = () => {
                       }}
                     />
                     <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
-                    <div className="absolute right-4 top-4 w-11 h-11 rounded-2xl bg-white/85 backdrop-blur flex items-center justify-center shadow-sm">
-                      <Icon className="w-5 h-5 text-foreground" />
+                    <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 shadow-sm backdrop-blur">
+                      <Icon className="h-5 w-5 text-foreground" />
                     </div>
                   </div>
 
-                  <div className="p-6 md:p-7 flex flex-col gap-4 flex-1">
-                    <h2 className="font-heading font-bold text-xl leading-tight">
-                      {s.title}
+                  <div className="flex flex-1 flex-col gap-4 p-6 md:p-7">
+                    <h2 className="font-heading text-xl font-bold leading-tight">
+                      {service.title}
                     </h2>
-                    <p className="text-sm text-muted-foreground leading-relaxed flex-1">
-                      {s.desc}
+                    <p className="flex-1 text-sm leading-relaxed text-muted-foreground">
+                      {service.desc}
                     </p>
                     <Link
                       to={
-                        s.slug
-                          ? `/uslugi/usluga?slug=${encodeURIComponent(s.slug)}`
+                        slug
+                          ? `/uslugi/usluga?slug=${encodeURIComponent(slug)}`
                           : "/uslugi"
                       }
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-rose-dark transition-all hover:scale-105 self-start"
+                      className="inline-flex self-start rounded-full bg-primary px-5 py-2.5 font-heading text-sm font-bold text-primary-foreground transition-all hover:scale-105 hover:bg-rose-dark"
                     >
-                      {s.cta || "Свържи се с нас"} →
+                      {service.cta || "Свържи се с нас"} →
                     </Link>
                   </div>
-<<<<<<< HEAD
-=======
-                  <h2 className="font-heading font-bold text-xl mb-3">{s.title}</h2>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-5 flex-1">{s.desc}</p>
-                  <Link
-                    to={s.slug ? `/uslugi/usluga?slug=${encodeURIComponent(s.slug)}` : "/uslugi"}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-rose-dark transition-all hover:scale-105 self-start"
-                  >
-                    {s.cta || "Свържи се с нас"} →
-                  </Link>
->>>>>>> c4d41ed58570286a1f3d5fc1b047ffbc2ae421b5
                 </div>
               );
             })}
@@ -313,40 +284,46 @@ const Services = () => {
       </section>
 
       {/* Service Info */}
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <h2 className="font-heading font-extrabold text-3xl md:text-4xl text-center mb-10">
+      <section className="bg-background py-16 md:py-24">
+        <div className="container mx-auto max-w-5xl px-4">
+          <h2 className="mb-10 text-center font-heading text-3xl font-extrabold md:text-4xl">
             Полезна <span className="text-primary">информация</span> ℹ️
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-card border border-border/50 rounded-3xl p-6 text-center">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-baby-blue-light flex items-center justify-center">
-                <Clock3 className="w-6 h-6 text-foreground" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="rounded-3xl border border-border/50 bg-card p-6 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-baby-blue-light">
+                <Clock3 className="h-6 w-6 text-foreground" />
               </div>
-              <h3 className="font-heading font-bold text-lg mb-2">Срок на изработка</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h3 className="mb-2 font-heading text-lg font-bold">
+                Срок на изработка
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 Изработката на продуктите е обикновено между 5 и 7 работни дни,
                 според сложността на поръчката.
               </p>
             </div>
 
-            <div className="bg-card border border-border/50 rounded-3xl p-6 text-center">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-baby-blue-light flex items-center justify-center">
-                <Palette className="w-6 h-6 text-foreground" />
+            <div className="rounded-3xl border border-border/50 bg-card p-6 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-baby-blue-light">
+                <Palette className="h-6 w-6 text-foreground" />
               </div>
-              <h3 className="font-heading font-bold text-lg mb-2">Цветове и представяне</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h3 className="mb-2 font-heading text-lg font-bold">
+                Цветове и представяне
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 Цветовете ще бъдат представени предварително, за да изберете
                 най-подходящата комбинация за вашия подарък.
               </p>
             </div>
 
-            <div className="bg-card border border-border/50 rounded-3xl p-6 text-center">
-              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-baby-blue-light flex items-center justify-center">
-                <PartyPopper className="w-6 h-6 text-foreground" />
+            <div className="rounded-3xl border border-border/50 bg-card p-6 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-baby-blue-light">
+                <PartyPopper className="h-6 w-6 text-foreground" />
               </div>
-              <h3 className="font-heading font-bold text-lg mb-2">Подаръци за гости</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <h3 className="mb-2 font-heading text-lg font-bold">
+                Подаръци за гости
+              </h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 Приемам поръчки и за подаръци за гости за кръщене, погача и
                 рожден ден.
               </p>
