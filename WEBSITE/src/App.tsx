@@ -13,11 +13,13 @@ import Login from "@/views/Login";
 import Register from "@/views/Register";
 import Profile from "@/views/Profile";
 import { AuthProvider } from "@/context/AuthContext";
+import ScrollToTop from "@/components/ScrollToTop";
 
 export default function App() {
   return (
     <AppProviders>
       <AuthProvider>
+        <ScrollToTop />
         <div className="flex min-h-screen flex-col">
           <Header />
           <div className="flex-1">

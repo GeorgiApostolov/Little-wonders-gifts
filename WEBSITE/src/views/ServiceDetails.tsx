@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import {
-  getBackendBaseUrl,
-  parseApiErrorMessage,
-  readJsonResponse,
-} from "@/lib/backend";
 
 type ServiceDetails = {
   slug: string;
@@ -17,90 +12,398 @@ type ServiceDetails = {
   bulletPoints?: string[];
 };
 
+const fallbackServiceDetailsBySlug: Record<string, ServiceDetails> = {
+  "pacifier-clips": {
+    slug: "pacifier-clips",
+    title: "Клипсове за биберон с име",
+    longDescription:
+      "Персонализирани клипсове от хранителен силикон и натурално дърво. Избери комбинация по цветове и стил за момичета или момчета.",
+    bullets: [
+      "Безопасни материали за ежедневна употреба",
+      "Персонализация с име на бебето",
+      "Варианти с цвете или панделка при избрани модели",
+    ],
+  },
+  "photo-frame": {
+    slug: "photo-frame",
+    title: "Рамка за снимка",
+    longDescription:
+      "Нежна рамка за снимка с име по желание. Идеален спомен за детската стая или подарък за повод.",
+  },
+  platform: {
+    slug: "platform",
+    title: "Платформа",
+    longDescription:
+      "Декоративна платформа за фотосесии, украса и специални поводи.",
+  },
+  "round-platform": {
+    slug: "round-platform",
+    title: "Кръгла платформа",
+    longDescription:
+      "Кръгла декоративна платформа с изчистен стил за фотосесии и празнични декорации.",
+  },
+  "letter-blocks": {
+    slug: "letter-blocks",
+    title: "Кубчета",
+    longDescription:
+      "Декоративни кубчета с букви за изписване на името на бебето.",
+  },
+};
+
 type ClipAudience = "girl" | "boy";
 type ClipDecoration = "flower" | "bow";
 
 type ClipOption = {
   id: string;
   audience: ClipAudience;
-  label: string;
+  title: string;
+  subtitle: string;
   colors: string[];
-  decoration?: ClipDecoration;
+  decorations?: ClipDecoration[];
+};
+
+type BlockOption = {
+  id: string;
+  audience: ClipAudience;
+  title: string;
+  subtitle: string;
+  colors: string[];
+};
+
+type FrameOption = {
+  id: string;
+  audience: ClipAudience;
+  title: string;
+  subtitle: string;
+  colors: string[];
+};
+
+type FrameBaseStyle = "solid" | "splatter";
+
+type RoundPlatformOption = {
+  id: string;
+  audience: ClipAudience;
+  title: string;
+  subtitle: string;
+  colors: string[];
+};
+
+type PlatformOption = {
+  id: string;
+  audience: ClipAudience;
+  title: string;
+  subtitle: string;
+  colors: string[];
 };
 
 const clipOptions: ClipOption[] = [
   {
-    id: "girl-pink-white-flower",
+    id: "girl-pink-white",
     audience: "girl",
-    label: "Розово + бяло + цвете",
+    title: "1) Розово + бяло",
+    subtitle: "Избор: цвете или панделка",
     colors: ["#F48FB1", "#FFFFFF", "#F48FB1", "#FFFFFF", "#FADADD"],
-    decoration: "flower",
-  },
-  {
-    id: "girl-pink-white-bow",
-    audience: "girl",
-    label: "Розово + бяло + панделка",
-    colors: ["#F48FB1", "#FFFFFF", "#F48FB1", "#FFFFFF", "#F9E4C8"],
-    decoration: "bow",
+    decorations: ["flower", "bow"],
   },
   {
     id: "girl-beige-white-flower",
     audience: "girl",
-    label: "Бежово + бяло + цвете",
+    title: "2) Бежово + бяло",
+    subtitle: "Декорация: цвете",
     colors: ["#D7BFA7", "#FFFFFF", "#D7BFA7", "#FFFFFF", "#EBDCC9"],
-    decoration: "flower",
+    decorations: ["flower"],
   },
   {
-    id: "girl-purple-white-flower",
+    id: "girl-purple-white",
     audience: "girl",
-    label: "Лилаво + бяло + цвете",
+    title: "3) Лилаво + бяло",
+    subtitle: "Избор: панделка или цвете",
     colors: ["#B9A0E6", "#FFFFFF", "#B9A0E6", "#FFFFFF", "#D8C7F2"],
-    decoration: "flower",
-  },
-  {
-    id: "girl-purple-white-bow",
-    audience: "girl",
-    label: "Лилаво + бяло + панделка",
-    colors: ["#B9A0E6", "#FFFFFF", "#B9A0E6", "#FFFFFF", "#EBDCC9"],
-    decoration: "bow",
+    decorations: ["bow", "flower"],
   },
   {
     id: "girl-yellow-beige",
     audience: "girl",
-    label: "Жълто + бежово/бяло",
+    title: "4) Жълто + бежово/бяло",
+    subtitle: "Нежна топла комбинация",
     colors: ["#F2D974", "#D7BFA7", "#FFFFFF", "#F2D974", "#EFDCA6"],
   },
   {
-    id: "boy-blue-white",
+    id: "boy-blue-white-beige",
     audience: "boy",
-    label: "Синьо + бяло/бежово",
+    title: "1) Синьо + бяло/бежово",
+    subtitle: "Класическа синя комбинация",
     colors: ["#4A90E2", "#FFFFFF", "#D7BFA7", "#4A90E2", "#B7D2F3"],
   },
   {
     id: "boy-mint-white",
     audience: "boy",
-    label: "Ментово зелено + бяло",
+    title: "2) Ментово зелено + бяло",
+    subtitle: "Свеж пастелен вариант",
     colors: ["#8CD9C8", "#FFFFFF", "#8CD9C8", "#FFFFFF", "#BEE9DF"],
   },
   {
     id: "boy-brown-beige",
     audience: "boy",
-    label: "Кафяво + бежово/бяло",
+    title: "3) Кафяво + бежово/бяло",
+    subtitle: "Земни и натурални тонове",
     colors: ["#9F7A5A", "#D7BFA7", "#FFFFFF", "#9F7A5A", "#C9A88C"],
   },
   {
     id: "boy-darkgreen-beige",
     audience: "boy",
-    label: "Тъмно зелено + бежово",
+    title: "4) Тъмно зелено + бежово",
+    subtitle: "Елегантна наситена комбинация",
     colors: ["#3E6B56", "#D7BFA7", "#3E6B56", "#D7BFA7", "#A5BCA8"],
   },
   {
     id: "boy-babyblue-darkblue",
     audience: "boy",
-    label: "Бебешко синьо + тъмно синьо",
+    title: "5) Бебешко синьо + тъмно синьо",
+    subtitle: "Контрастен двуцветен стил",
     colors: ["#8BBBF4", "#245A9C", "#8BBBF4", "#245A9C", "#A8CCF0"],
   },
 ];
+
+const blockOptions: BlockOption[] = [
+  {
+    id: "block-girl-pink-white",
+    audience: "girl",
+    title: "1) Розово + бяло",
+    subtitle: "Нежна класическа комбинация",
+    colors: ["#F48FB1", "#FFFFFF"],
+  },
+  {
+    id: "block-girl-yellow-white",
+    audience: "girl",
+    title: "2) Жълто + бяло",
+    subtitle: "Слънчев и светъл вариант",
+    colors: ["#F2D974", "#FFFFFF"],
+  },
+  {
+    id: "block-girl-purple-white",
+    audience: "girl",
+    title: "3) Лилаво + бяло",
+    subtitle: "Мек пастелен контраст",
+    colors: ["#B9A0E6", "#FFFFFF"],
+  },
+  {
+    id: "block-girl-beige-white",
+    audience: "girl",
+    title: "4) Бежово + бяло",
+    subtitle: "Топли натурални тонове",
+    colors: ["#D7BFA7", "#FFFFFF"],
+  },
+  {
+    id: "block-girl-pink-beige",
+    audience: "girl",
+    title: "5) Розово + бежово",
+    subtitle: "Романтична комбинация",
+    colors: ["#F48FB1", "#D7BFA7"],
+  },
+  {
+    id: "block-girl-baby-pink-cyclamen",
+    audience: "girl",
+    title: "6) Бебешко розово + цикламено розово",
+    subtitle: "По-наситен розов стил",
+    colors: ["#F7B8C8", "#E5458C"],
+  },
+  {
+    id: "block-girl-baby-pink-pastel-yellow",
+    audience: "girl",
+    title: "7) Бебешко розово + пастелено жълто",
+    subtitle: "Сладка пастелна визия",
+    colors: ["#F7B8C8", "#F7E58B"],
+  },
+  {
+    id: "block-boy-baby-blue-white",
+    audience: "boy",
+    title: "1) Бебешко синьо + бяло",
+    subtitle: "Свеж и изчистен вариант",
+    colors: ["#9DCBFF", "#FFFFFF"],
+  },
+  {
+    id: "block-boy-baby-blue-dark-blue-white",
+    audience: "boy",
+    title: "2) Бебешко синьо + тъмно синьо + бяло",
+    subtitle: "Трицветна класическа комбинация",
+    colors: ["#9DCBFF", "#1C4F9A", "#FFFFFF"],
+  },
+  {
+    id: "block-boy-dark-blue-white",
+    audience: "boy",
+    title: "3) Тъмно синьо + бяло",
+    subtitle: "Силен контраст",
+    colors: ["#1C4F9A", "#FFFFFF"],
+  },
+  {
+    id: "block-boy-lime-white",
+    audience: "boy",
+    title: "4) Лайм + бяло",
+    subtitle: "Жив и модерен акцент",
+    colors: ["#A4D65E", "#FFFFFF"],
+  },
+  {
+    id: "block-boy-light-blue-brown",
+    audience: "boy",
+    title: "5) Светло синьо + кафяво",
+    subtitle: "Натурална комбинация",
+    colors: ["#7CC9F5", "#9F7A5A"],
+  },
+  {
+    id: "block-boy-green-yellow",
+    audience: "boy",
+    title: "6) Зелено + жълто",
+    subtitle: "Игрива цветна палитра",
+    colors: ["#4C9A59", "#F2D974"],
+  },
+  {
+    id: "block-boy-beige-white",
+    audience: "boy",
+    title: "7) Бежово + бяло",
+    subtitle: "Неутрален мек стил",
+    colors: ["#D7BFA7", "#FFFFFF"],
+  },
+  {
+    id: "block-boy-gray-white",
+    audience: "boy",
+    title: "8) Сиво + бяло",
+    subtitle: "Минималистична визия",
+    colors: ["#B4B8C0", "#FFFFFF"],
+  },
+];
+
+const frameOptions: FrameOption[] = blockOptions.map((option) => ({
+  id: option.id.replace("block-", "frame-"),
+  audience: option.audience,
+  title: option.title,
+  subtitle: option.subtitle,
+  colors: option.colors,
+}));
+
+const roundPlatformOptions: RoundPlatformOption[] = [
+  {
+    id: "round-platform-girl-pink",
+    audience: "girl",
+    title: "Розово",
+    subtitle: "Един основен цвят за момиче",
+    colors: ["#F7B8C8"],
+  },
+  {
+    id: "round-platform-boy-blue",
+    audience: "boy",
+    title: "Синьо",
+    subtitle: "Един основен цвят за момче",
+    colors: ["#8BBBF4"],
+  },
+];
+
+const platformOptions: PlatformOption[] = [
+  {
+    id: "platform-girl-pink",
+    audience: "girl",
+    title: "Розово",
+    subtitle: "Платформа за момиче",
+    colors: ["#EFC8B8"],
+  },
+  {
+    id: "platform-boy-blue",
+    audience: "boy",
+    title: "Синьо",
+    subtitle: "Платформа за момче",
+    colors: ["#8EC7FF"],
+  },
+];
+
+const getPreviewLetters = (value: string, maxLetters = 5) => {
+  const cleaned = value
+    .toLocaleUpperCase("bg-BG")
+    .replace(/[^A-ZА-Я0-9]/g, "");
+  const fallback = "ИМЕ";
+  if (!cleaned) {
+    return fallback.slice(0, maxLetters);
+  }
+
+  return cleaned.slice(0, maxLetters);
+};
+
+const getHexToRgb = (hexColor: string) => {
+  const hex = hexColor.replace("#", "").trim();
+  if (hex.length !== 6) {
+    return null;
+  }
+
+  const r = Number.parseInt(hex.slice(0, 2), 16);
+  const g = Number.parseInt(hex.slice(2, 4), 16);
+  const b = Number.parseInt(hex.slice(4, 6), 16);
+
+  if ([r, g, b].some((value) => Number.isNaN(value))) {
+    return null;
+  }
+
+  return { r, g, b };
+};
+
+const getAccessibleTextColor = (hexColor: string) => {
+  const rgb = getHexToRgb(hexColor);
+  if (!rgb) {
+    return {
+      fill: "#2B2B2B",
+      stroke: "none",
+    };
+  }
+
+  const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+  const useDarkText = luminance > 0.72;
+
+  return useDarkText
+    ? {
+        fill: "#374151",
+        stroke: "#FFFFFF",
+      }
+    : {
+        fill: "#FFFFFF",
+        stroke: "none",
+      };
+};
+
+const getReadableColorOnBackground = (
+  preferredHexColor: string,
+  backgroundHexColor: string,
+) => {
+  const preferred = getHexToRgb(preferredHexColor);
+  const background = getHexToRgb(backgroundHexColor);
+
+  if (!preferred || !background) {
+    return {
+      fill: "#1F2937",
+      stroke: "#FFF7ED",
+    };
+  }
+
+  const preferredLuminance =
+    (0.299 * preferred.r + 0.587 * preferred.g + 0.114 * preferred.b) / 255;
+  const backgroundLuminance =
+    (0.299 * background.r + 0.587 * background.g + 0.114 * background.b) / 255;
+  const contrastDelta = Math.abs(preferredLuminance - backgroundLuminance);
+
+  const resolvedFill =
+    contrastDelta >= 0.35
+      ? preferredHexColor
+      : backgroundLuminance > 0.7
+        ? "#1F2937"
+        : "#FFFFFF";
+
+  const fillRgb = getHexToRgb(resolvedFill);
+  const fillLuminance = fillRgb
+    ? (0.299 * fillRgb.r + 0.587 * fillRgb.g + 0.114 * fillRgb.b) / 255
+    : 0.5;
+
+  return {
+    fill: resolvedFill,
+    stroke: fillLuminance > 0.65 ? "#334155" : "#FFF7ED",
+  };
+};
 
 const renderDecoration = (decoration?: ClipDecoration) => {
   if (decoration === "flower") {
@@ -128,7 +431,10 @@ const renderDecoration = (decoration?: ClipDecoration) => {
   return "";
 };
 
-const getClipPreviewDataUri = (option: ClipOption) => {
+const getClipPreviewDataUri = (
+  option: ClipOption,
+  selectedDecoration?: ClipDecoration,
+) => {
   const circles = option.colors
     .map(
       (color, index) =>
@@ -149,8 +455,262 @@ const getClipPreviewDataUri = (option: ClipOption) => {
       ${circles}
       <circle cx="500" cy="112" r="33" fill="#F4F4F4" stroke="#D8D8D8" stroke-width="2"/>
       <circle cx="500" cy="112" r="17" fill="#FFFFFF" stroke="#D8D8D8" stroke-width="2"/>
-      ${renderDecoration(option.decoration)}
-      <text x="54" y="205" fill="#666666" font-size="22" font-family="Arial, sans-serif">${option.label}</text>
+      ${renderDecoration(selectedDecoration)}
+      <text x="54" y="205" fill="#666666" font-size="22" font-family="Arial, sans-serif">${option.title}</text>
+      <text x="54" y="238" fill="#878787" font-size="18" font-family="Arial, sans-serif">${option.subtitle}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+const getBlocksPreviewDataUri = (option: BlockOption, babyName: string) => {
+  const letters = getPreviewLetters(babyName).split("");
+  const cubeWidth = 102;
+  const cubeGap = 26;
+  const cubesCount = letters.length;
+  const totalCubesWidth =
+    cubesCount > 0
+      ? cubesCount * cubeWidth + (cubesCount - 1) * cubeGap
+      : cubeWidth;
+  const startX = (860 - totalCubesWidth) / 2;
+
+  const cubes = letters
+    .map((letter, index) => {
+      const x = startX + index * (cubeWidth + cubeGap);
+      const color = option.colors[index % option.colors.length];
+      const textStyle = getAccessibleTextColor(color);
+      return `
+        <g>
+          <rect x="${x}" y="136" width="102" height="102" rx="12" fill="${color}" stroke="#E2E2E2" stroke-width="2"/>
+          <text x="${x + 51}" y="202" text-anchor="middle" fill="${textStyle.fill}" stroke="${textStyle.stroke}" stroke-width="1.5" paint-order="stroke" font-size="46" font-weight="700" font-family="Arial, sans-serif">${letter}</text>
+          <circle cx="${x + 51}" cy="112" r="26" fill="#7A5D49"/>
+          <ellipse cx="${x + 41}" cy="108" rx="4" ry="5" fill="#231B16"/>
+          <ellipse cx="${x + 61}" cy="108" rx="4" ry="5" fill="#231B16"/>
+          <ellipse cx="${x + 51}" cy="120" rx="10" ry="7" fill="#F6E7D8"/>
+        </g>
+      `;
+    })
+    .join("");
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="860" height="330" viewBox="0 0 860 330" fill="none">
+      <defs>
+        <linearGradient id="blocksBg" x1="0" y1="0" x2="860" y2="330" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F8FBFF"/>
+          <stop offset="1" stop-color="#FFF8FA"/>
+        </linearGradient>
+      </defs>
+      <rect width="860" height="330" rx="28" fill="url(#blocksBg)"/>
+      <rect x="72" y="252" width="716" height="18" rx="9" fill="#E9E9E9"/>
+      ${cubes}
+      <text x="72" y="44" fill="#666666" font-size="25" font-family="Arial, sans-serif">${option.title}</text>
+      <text x="72" y="74" fill="#878787" font-size="19" font-family="Arial, sans-serif">${option.subtitle}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+const getFramePreviewDataUri = (
+  option: FrameOption,
+  baseStyle: FrameBaseStyle,
+  babyName: string,
+) => {
+  const letters = getPreviewLetters(babyName, 7).split("");
+  const lettersCount = letters.length;
+  const letterSpacing = 66;
+  const startX = 400 - ((lettersCount - 1) * letterSpacing) / 2;
+  const baseFill = option.colors[0] || "#F4F4F4";
+  const secondaryColor = option.colors[1] || "#D7BFA7";
+
+  const lettersSvg = letters
+    .map((letter, index) => {
+      const x = startX + index * letterSpacing;
+      const preferredColor =
+        option.colors[(index + 1) % option.colors.length] || "#1F2937";
+      const textStyle = getReadableColorOnBackground(
+        preferredColor,
+        baseStyle === "solid" ? baseFill : "#FFFFFF",
+      );
+
+      return `
+        <text x="${x}" y="120" text-anchor="middle" fill="${textStyle.fill}" stroke="${textStyle.stroke}" stroke-width="2.6" paint-order="stroke" font-size="56" font-weight="800" font-family="Arial, sans-serif">${letter}</text>
+      `;
+    })
+    .join("");
+
+  const splatters = Array.from({ length: 46 })
+    .map((_, index) => {
+      const color = option.colors[index % option.colors.length] || "#A9A9A9";
+      const x = 108 + ((index * 137) % 578);
+      const y = 52 + ((index * 89) % 438);
+      const radius = 1.8 + (index % 3);
+      return `<circle cx="${x}" cy="${y}" r="${radius}" fill="${color}" fill-opacity="0.85"/>`;
+    })
+    .join("");
+
+  const frameSurface =
+    baseStyle === "solid"
+      ? `<rect x="90" y="40" width="620" height="460" rx="16" fill="${baseFill}"/>`
+      : `
+        <rect x="90" y="40" width="620" height="460" rx="16" fill="#FFFFFF"/>
+        ${splatters}
+      `;
+
+  const bearOutfitLeft = baseStyle === "solid" ? secondaryColor : baseFill;
+  const bearOutfitRight = baseStyle === "solid" ? baseFill : secondaryColor;
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" fill="none">
+      <defs>
+        <linearGradient id="frameBg" x1="0" y1="0" x2="800" y2="560" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F7FBFF"/>
+          <stop offset="1" stop-color="#FFF7F9"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="560" rx="24" fill="url(#frameBg)"/>
+      ${frameSurface}
+      <rect x="220" y="170" width="360" height="250" rx="10" fill="#FFFFFF" stroke="#E6E6E6" stroke-width="3"/>
+      ${lettersSvg}
+
+      <g>
+        <circle cx="190" cy="458" r="44" fill="#7A5D49"/>
+        <circle cx="160" cy="428" r="15" fill="#7A5D49"/>
+        <circle cx="220" cy="428" r="15" fill="#7A5D49"/>
+        <ellipse cx="190" cy="468" rx="16" ry="12" fill="#F6E7D8"/>
+        <rect x="158" y="486" width="64" height="34" rx="10" fill="${bearOutfitLeft}"/>
+      </g>
+
+      <g>
+        <circle cx="610" cy="458" r="44" fill="#7A5D49"/>
+        <circle cx="580" cy="428" r="15" fill="#7A5D49"/>
+        <circle cx="640" cy="428" r="15" fill="#7A5D49"/>
+        <ellipse cx="610" cy="468" rx="16" ry="12" fill="#F6E7D8"/>
+        <rect x="578" y="486" width="64" height="34" rx="10" fill="${bearOutfitRight}"/>
+      </g>
+
+      <text x="92" y="534" fill="#6B7280" font-size="20" font-family="Arial, sans-serif">${option.title} | Основа: ${
+        baseStyle === "solid" ? "Едноцветна" : "Пръскана"
+      }</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+const getRoundPlatformPreviewDataUri = (
+  option: RoundPlatformOption,
+  babyName: string,
+) => {
+  const baseColor = option.colors[0] || "#E5E7EB";
+  const letters = getPreviewLetters(babyName, 8);
+  const textStyle = getReadableColorOnBackground("#F5E6D8", baseColor);
+
+  const curvedTextSvg = `
+    <defs>
+      <path id="roundPlatformTextArc" d="M 215 292 A 185 185 0 0 1 585 292" />
+    </defs>
+    <text fill="${textStyle.fill}" stroke="${textStyle.stroke}" stroke-width="2.2" paint-order="stroke" font-size="52" font-weight="800" font-family="Arial, sans-serif" letter-spacing="5">
+      <textPath href="#roundPlatformTextArc" startOffset="50%" text-anchor="middle" dy="14">${letters}</textPath>
+    </text>
+  `;
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" fill="none">
+      <defs>
+        <linearGradient id="roundBg" x1="0" y1="0" x2="800" y2="560" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F8FBFF"/>
+          <stop offset="1" stop-color="#FFF7FA"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="560" rx="24" fill="url(#roundBg)"/>
+      <circle cx="400" cy="280" r="214" fill="${baseColor}"/>
+      <circle cx="400" cy="280" r="156" fill="#FFFFFF"/>
+      <rect x="160" y="302" width="480" height="20" rx="10" fill="${baseColor}"/>
+      <path d="M312 432h176l40 52H272l40-52z" fill="${baseColor}"/>
+
+      <g>
+        <circle cx="285" cy="286" r="34" fill="#7A5D49"/>
+        <circle cx="262" cy="263" r="11" fill="#7A5D49"/>
+        <circle cx="308" cy="263" r="11" fill="#7A5D49"/>
+        <ellipse cx="285" cy="294" rx="12" ry="9" fill="#F6E7D8"/>
+      </g>
+      <g>
+        <circle cx="400" cy="286" r="34" fill="#7A5D49"/>
+        <circle cx="377" cy="263" r="11" fill="#7A5D49"/>
+        <circle cx="423" cy="263" r="11" fill="#7A5D49"/>
+        <ellipse cx="400" cy="294" rx="12" ry="9" fill="#F6E7D8"/>
+      </g>
+      <g>
+        <circle cx="515" cy="286" r="34" fill="#7A5D49"/>
+        <circle cx="492" cy="263" r="11" fill="#7A5D49"/>
+        <circle cx="538" cy="263" r="11" fill="#7A5D49"/>
+        <ellipse cx="515" cy="294" rx="12" ry="9" fill="#F6E7D8"/>
+      </g>
+
+      ${curvedTextSvg}
+      <text x="82" y="530" fill="#6B7280" font-size="20" font-family="Arial, sans-serif">Цвят: ${option.title}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+const getPlatformPreviewDataUri = (option: PlatformOption, babyName: string) => {
+  const baseColor = option.colors[0] || "#E5E7EB";
+  const letters = getPreviewLetters(babyName, 6).split("");
+  const lettersCount = letters.length;
+  const letterSpacing = 70;
+  const startX = 400 - ((lettersCount - 1) * letterSpacing) / 2;
+  const textStyle = getReadableColorOnBackground("#F5E6D8", baseColor);
+
+  const lettersSvg = letters
+    .map((letter, index) => {
+      const x = startX + index * letterSpacing;
+      return `<text x="${x}" y="408" text-anchor="middle" fill="${textStyle.fill}" stroke="${textStyle.stroke}" stroke-width="2" paint-order="stroke" font-size="56" font-weight="800" font-family="Arial, sans-serif">${letter}</text>`;
+    })
+    .join("");
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" fill="none">
+      <defs>
+        <linearGradient id="platformBg" x1="0" y1="0" x2="800" y2="560" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#F8FBFF"/>
+          <stop offset="1" stop-color="#FFF7FA"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="560" rx="24" fill="url(#platformBg)"/>
+
+      <ellipse cx="150" cy="360" rx="52" ry="44" fill="${baseColor}"/>
+      <ellipse cx="650" cy="360" rx="52" ry="44" fill="${baseColor}"/>
+      <ellipse cx="188" cy="334" rx="35" ry="30" fill="${baseColor}"/>
+      <ellipse cx="612" cy="334" rx="35" ry="30" fill="${baseColor}"/>
+
+      <rect x="120" y="278" width="560" height="164" rx="22" fill="${baseColor}"/>
+      <rect x="120" y="278" width="560" height="164" rx="22" stroke="#D8D8D8" stroke-width="2"/>
+
+      <g>
+        <circle cx="250" cy="246" r="42" fill="#7A5D49"/>
+        <circle cx="222" cy="217" r="13" fill="#7A5D49"/>
+        <circle cx="278" cy="217" r="13" fill="#7A5D49"/>
+        <ellipse cx="250" cy="255" rx="14" ry="10" fill="#F6E7D8"/>
+      </g>
+      <g>
+        <circle cx="400" cy="246" r="42" fill="#7A5D49"/>
+        <circle cx="372" cy="217" r="13" fill="#7A5D49"/>
+        <circle cx="428" cy="217" r="13" fill="#7A5D49"/>
+        <ellipse cx="400" cy="255" rx="14" ry="10" fill="#F6E7D8"/>
+      </g>
+      <g>
+        <circle cx="550" cy="246" r="42" fill="#7A5D49"/>
+        <circle cx="522" cy="217" r="13" fill="#7A5D49"/>
+        <circle cx="578" cy="217" r="13" fill="#7A5D49"/>
+        <ellipse cx="550" cy="255" rx="14" ry="10" fill="#F6E7D8"/>
+      </g>
+
+      ${lettersSvg}
+      <text x="82" y="530" fill="#6B7280" font-size="20" font-family="Arial, sans-serif">Цвят: ${option.title}</text>
     </svg>
   `;
 
@@ -168,13 +728,45 @@ export default function ServiceDetails() {
   const [selectedOptionId, setSelectedOptionId] = useState<string>(
     clipOptions[0].id,
   );
+  const [selectedDecoration, setSelectedDecoration] = useState<
+    ClipDecoration | undefined
+  >(clipOptions[0].decorations?.[0]);
+  const [selectedBlocksAudience, setSelectedBlocksAudience] =
+    useState<ClipAudience>("girl");
+  const [selectedBlockOptionId, setSelectedBlockOptionId] = useState<string>(
+    blockOptions[0].id,
+  );
+  const [selectedFrameAudience, setSelectedFrameAudience] =
+    useState<ClipAudience>("girl");
+  const [selectedFrameOptionId, setSelectedFrameOptionId] = useState<string>(
+    frameOptions[0].id,
+  );
+  const [selectedFrameBaseStyle, setSelectedFrameBaseStyle] =
+    useState<FrameBaseStyle>("solid");
+  const [selectedRoundPlatformAudience, setSelectedRoundPlatformAudience] =
+    useState<ClipAudience>("girl");
+  const [selectedRoundPlatformOptionId, setSelectedRoundPlatformOptionId] =
+    useState<string>(roundPlatformOptions[0].id);
+  const [selectedPlatformAudience, setSelectedPlatformAudience] =
+    useState<ClipAudience>("girl");
+  const [selectedPlatformOptionId, setSelectedPlatformOptionId] = useState<string>(
+    platformOptions[0].id,
+  );
   const [babyName, setBabyName] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const backendBaseUrl = getBackendBaseUrl();
+
+  const backendBaseUrl = useMemo(() => {
+    const configured = import.meta.env.VITE_BACKEND_BASE_URL;
+    if (!configured) {
+      return "/backend";
+    }
+
+    return configured.replace(/\/+$/, "");
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -197,17 +789,24 @@ export default function ServiceDetails() {
         const response = await fetch(
           `${backendBaseUrl}/services/${encodeURIComponent(slug)}`,
         );
-        const payload = await readJsonResponse<{
-          message?: string;
-          service?: ServiceDetails;
-        }>(response);
+
+        const responseContentType =
+          response.headers.get("content-type") || "";
+        const payload = responseContentType.includes("application/json")
+          ? await response.json()
+          : null;
 
         if (!response.ok) {
+          const fallback = fallbackServiceDetailsBySlug[slug];
+          if (fallback && isMounted) {
+            setService(fallback);
+            setError(null);
+            return;
+          }
+
           throw new Error(
-            parseApiErrorMessage(
-              payload,
+            payload?.message ||
               `Service request failed with status ${response.status}`,
-            ),
           );
         }
 
@@ -223,12 +822,18 @@ export default function ServiceDetails() {
         }
       } catch (fetchError) {
         if (isMounted) {
-          setService(null);
-          setError(
-            fetchError instanceof Error
-              ? fetchError.message
-              : "Неуспешно зареждане на услугата",
-          );
+          const fallback = fallbackServiceDetailsBySlug[slug];
+          if (fallback) {
+            setService(fallback);
+            setError(null);
+          } else {
+            setService(null);
+            setError(
+              fetchError instanceof Error
+                ? fetchError.message
+                : "Неуспешно зареждане на услугата",
+            );
+          }
         }
       } finally {
         if (isMounted) {
@@ -269,13 +874,176 @@ export default function ServiceDetails() {
     [selectedOptionId],
   );
 
+  const blockOptionsForAudience = useMemo(
+    () =>
+      blockOptions.filter((option) => option.audience === selectedBlocksAudience),
+    [selectedBlocksAudience],
+  );
+
+  const selectedBlockOption = useMemo(
+    () => blockOptions.find((option) => option.id === selectedBlockOptionId) || null,
+    [selectedBlockOptionId],
+  );
+
+  const frameOptionsForAudience = useMemo(
+    () => frameOptions.filter((option) => option.audience === selectedFrameAudience),
+    [selectedFrameAudience],
+  );
+
+  const selectedFrameOption = useMemo(
+    () => frameOptions.find((option) => option.id === selectedFrameOptionId) || null,
+    [selectedFrameOptionId],
+  );
+
+  const roundPlatformOptionsForAudience = useMemo(
+    () =>
+      roundPlatformOptions.filter(
+        (option) => option.audience === selectedRoundPlatformAudience,
+      ),
+    [selectedRoundPlatformAudience],
+  );
+
+  const selectedRoundPlatformOption = useMemo(
+    () =>
+      roundPlatformOptions.find(
+        (option) => option.id === selectedRoundPlatformOptionId,
+      ) || null,
+    [selectedRoundPlatformOptionId],
+  );
+
+  const platformOptionsForAudience = useMemo(
+    () =>
+      platformOptions.filter((option) => option.audience === selectedPlatformAudience),
+    [selectedPlatformAudience],
+  );
+
+  const selectedPlatformOption = useMemo(
+    () =>
+      platformOptions.find((option) => option.id === selectedPlatformOptionId) ||
+      null,
+    [selectedPlatformOptionId],
+  );
+
   const previewImage = useMemo(() => {
     if (!selectedClipOption) {
       return "";
     }
 
-    return getClipPreviewDataUri(selectedClipOption);
-  }, [selectedClipOption]);
+    return getClipPreviewDataUri(selectedClipOption, selectedDecoration);
+  }, [selectedClipOption, selectedDecoration]);
+
+  const blocksPreviewImage = useMemo(() => {
+    if (!selectedBlockOption) {
+      return "";
+    }
+
+    return getBlocksPreviewDataUri(selectedBlockOption, babyName);
+  }, [selectedBlockOption, babyName]);
+
+  const framePreviewImage = useMemo(() => {
+    if (!selectedFrameOption) {
+      return "";
+    }
+
+    return getFramePreviewDataUri(
+      selectedFrameOption,
+      selectedFrameBaseStyle,
+      babyName,
+    );
+  }, [selectedFrameOption, selectedFrameBaseStyle, babyName]);
+
+  const roundPlatformPreviewImage = useMemo(() => {
+    if (!selectedRoundPlatformOption) {
+      return "";
+    }
+
+    return getRoundPlatformPreviewDataUri(selectedRoundPlatformOption, babyName);
+  }, [selectedRoundPlatformOption, babyName]);
+
+  const platformPreviewImage = useMemo(() => {
+    if (!selectedPlatformOption) {
+      return "";
+    }
+
+    return getPlatformPreviewDataUri(selectedPlatformOption, babyName);
+  }, [selectedPlatformOption, babyName]);
+
+  useEffect(() => {
+    if (!selectedClipOption) {
+      setSelectedDecoration(undefined);
+      return;
+    }
+
+    const allowedDecorations = selectedClipOption.decorations || [];
+    if (allowedDecorations.length === 0) {
+      setSelectedDecoration(undefined);
+      return;
+    }
+
+    if (!selectedDecoration || !allowedDecorations.includes(selectedDecoration)) {
+      setSelectedDecoration(allowedDecorations[0]);
+    }
+  }, [selectedClipOption, selectedDecoration]);
+
+  useEffect(() => {
+    const firstOption = blockOptionsForAudience[0];
+    if (!firstOption) {
+      return;
+    }
+
+    const stillVisible = blockOptionsForAudience.some(
+      (option) => option.id === selectedBlockOptionId,
+    );
+
+    if (!stillVisible) {
+      setSelectedBlockOptionId(firstOption.id);
+    }
+  }, [blockOptionsForAudience, selectedBlockOptionId]);
+
+  useEffect(() => {
+    const firstOption = frameOptionsForAudience[0];
+    if (!firstOption) {
+      return;
+    }
+
+    const stillVisible = frameOptionsForAudience.some(
+      (option) => option.id === selectedFrameOptionId,
+    );
+
+    if (!stillVisible) {
+      setSelectedFrameOptionId(firstOption.id);
+    }
+  }, [frameOptionsForAudience, selectedFrameOptionId]);
+
+  useEffect(() => {
+    const firstOption = roundPlatformOptionsForAudience[0];
+    if (!firstOption) {
+      return;
+    }
+
+    const stillVisible = roundPlatformOptionsForAudience.some(
+      (option) => option.id === selectedRoundPlatformOptionId,
+    );
+
+    if (!stillVisible) {
+      setSelectedRoundPlatformOptionId(firstOption.id);
+    }
+  }, [roundPlatformOptionsForAudience, selectedRoundPlatformOptionId]);
+
+  useEffect(() => {
+    const firstOption = platformOptionsForAudience[0];
+    if (!firstOption) {
+      return;
+    }
+
+    const stillVisible = platformOptionsForAudience.some(
+      (option) => option.id === selectedPlatformOptionId,
+    );
+
+    if (!stillVisible) {
+      setSelectedPlatformOptionId(firstOption.id);
+    }
+  }, [platformOptionsForAudience, selectedPlatformOptionId]);
 
   const bullets = service?.bullets || service?.bulletPoints || [];
   const heading = service?.title || "Детайли за услуга";
@@ -295,22 +1063,58 @@ export default function ServiceDetails() {
   }, [user]);
 
   const submitOrder = async () => {
-    if (!service || slug !== "pacifier-clips") {
+    if (
+      !service ||
+      (slug !== "pacifier-clips" &&
+        slug !== "letter-blocks" &&
+        slug !== "photo-frame" &&
+        slug !== "round-platform" &&
+        slug !== "platform")
+    ) {
       return;
     }
 
     const trimmedBabyName = babyName.trim();
-    if (!trimmedBabyName) {
+    const isNameRequired =
+      slug === "pacifier-clips" ||
+      slug === "letter-blocks" ||
+      slug === "photo-frame";
+
+    if (isNameRequired && !trimmedBabyName) {
       setOrderError("Моля, въведете име на бебето.");
       setOrderMessage(null);
       return;
     }
 
-    if (!selectedClipOption) {
-      setOrderError("Моля, изберете комбинация за клипса.");
+    const selectedOption =
+      slug === "pacifier-clips"
+        ? selectedClipOption
+        : slug === "letter-blocks"
+          ? selectedBlockOption
+          : slug === "photo-frame"
+            ? selectedFrameOption
+            : slug === "round-platform"
+              ? selectedRoundPlatformOption
+              : selectedPlatformOption;
+
+    if (!selectedOption) {
+      setOrderError("Моля, изберете комбинация за продукта.");
       setOrderMessage(null);
       return;
     }
+
+    const selectedAudienceForOrder =
+      slug === "pacifier-clips"
+        ? selectedAudience
+        : slug === "letter-blocks"
+          ? selectedBlocksAudience
+          : slug === "photo-frame"
+            ? selectedFrameAudience
+            : slug === "round-platform"
+              ? selectedRoundPlatformAudience
+              : selectedPlatformAudience;
+    const selectedDecorationForOrder =
+      slug === "pacifier-clips" ? selectedDecoration : undefined;
 
     setIsSubmittingOrder(true);
     setOrderError(null);
@@ -331,16 +1135,19 @@ export default function ServiceDetails() {
         body: JSON.stringify({
           serviceSlug: slug,
           serviceTitle: heading,
-          selectedAudience,
-          selectedOptionId: selectedClipOption.id,
-          selectedOptionLabel: selectedClipOption.label,
+          selectedAudience: selectedAudienceForOrder,
+          selectedOptionId: selectedOption.id,
+          selectedOptionLabel: selectedOption.title,
+          selectedDecoration: selectedDecorationForOrder,
+          frameBaseStyle:
+            slug === "photo-frame" ? selectedFrameBaseStyle : undefined,
           babyName: trimmedBabyName,
           customerName: customerName.trim(),
           customerEmail: customerEmail.trim(),
         }),
       });
 
-      const payload = await readJsonResponse<{
+      const payload = (await response.json()) as {
         status?: string;
         message?: string;
         orderId?: string;
@@ -350,12 +1157,10 @@ export default function ServiceDetails() {
           skipped?: boolean;
           reason?: string;
         };
-      }>(response);
+      };
 
       if (!response.ok || payload.status !== "ok") {
-        throw new Error(
-          parseApiErrorMessage(payload, "Неуспешно изпращане на поръчката."),
-        );
+        throw new Error(payload.message || "Неуспешно изпращане на поръчката.");
       }
 
       const emailNotice = payload.email?.skipped
@@ -418,23 +1223,27 @@ export default function ServiceDetails() {
                 {slug === "pacifier-clips" ? (
                   <div className="rounded-3xl border border-border/60 bg-background p-5 md:p-6 mb-8">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                      Билдер за поръчка
+                      Меню за избор
                     </p>
                     <h2 className="font-heading font-extrabold text-xl md:text-2xl mb-4">
-                      Персонализирани клипсове за биберон
+                      Клипсове за биберон с име
                     </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      Избери подкатегория и вариант. За всяка подкатегория се
+                      показва отделна визуализация.
+                    </p>
 
                     {selectedClipOption ? (
                       <img
                         src={previewImage}
-                        alt={`Визуализация: ${selectedClipOption.label}`}
+                        alt={`Визуализация: ${selectedClipOption.title}`}
                         className="w-full rounded-2xl border border-border/40 mb-5"
                       />
                     ) : null}
 
                     <div className="grid gap-3 mb-5">
                       <p className="text-sm font-heading font-bold">
-                        1) Избери тип
+                        1) Избери подкатегория
                       </p>
                       <div className="flex flex-wrap gap-2">
                         <button
@@ -446,7 +1255,7 @@ export default function ServiceDetails() {
                               : "bg-muted text-muted-foreground hover:bg-accent"
                           }`}
                         >
-                          Момиче
+                          Момичета
                         </button>
                         <button
                           type="button"
@@ -457,14 +1266,14 @@ export default function ServiceDetails() {
                               : "bg-muted text-muted-foreground hover:bg-accent"
                           }`}
                         >
-                          Момче
+                          Момчета
                         </button>
                       </div>
                     </div>
 
                     <div className="grid gap-3 mb-5">
                       <p className="text-sm font-heading font-bold">
-                        2) Избери комбинация
+                        2) Избери вариант
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {optionsForAudience.map((option) => (
@@ -478,18 +1287,47 @@ export default function ServiceDetails() {
                                 : "border-border/60 hover:border-primary/60 hover:bg-muted"
                             }`}
                           >
-                            {option.label}
+                            <span className="block font-semibold text-foreground">
+                              {option.title}
+                            </span>
+                            <span className="block text-xs text-muted-foreground mt-0.5">
+                              {option.subtitle}
+                            </span>
                           </button>
                         ))}
                       </div>
                     </div>
+
+                    {selectedClipOption?.decorations?.length ? (
+                      <div className="grid gap-3 mb-5">
+                        <p className="text-sm font-heading font-bold">
+                          3) Избери елемент
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedClipOption.decorations.map((decoration) => (
+                            <button
+                              key={decoration}
+                              type="button"
+                              onClick={() => setSelectedDecoration(decoration)}
+                              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                                selectedDecoration === decoration
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-muted-foreground hover:bg-accent"
+                              }`}
+                            >
+                              {decoration === "flower" ? "Цвете" : "Панделка"}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div className="grid gap-3 mb-5">
                       <label
                         htmlFor="baby-name"
                         className="text-sm font-heading font-bold"
                       >
-                        3) Въведи име на бебето
+                        4) Въведи име на бебето
                       </label>
                       <input
                         id="baby-name"
@@ -507,7 +1345,7 @@ export default function ServiceDetails() {
                         htmlFor="customer-name"
                         className="text-sm font-heading font-bold"
                       >
-                        4) Твоето име (по желание)
+                        5) Твоето име (по желание)
                       </label>
                       <input
                         id="customer-name"
@@ -527,7 +1365,7 @@ export default function ServiceDetails() {
                         htmlFor="customer-email"
                         className="text-sm font-heading font-bold"
                       >
-                        5) Имейл за потвърждение (по желание)
+                        6) Имейл за потвърждение (по желание)
                       </label>
                       <input
                         id="customer-email"
@@ -564,8 +1402,612 @@ export default function ServiceDetails() {
                     ) : null}
 
                     <p className="text-xs text-muted-foreground">
-                      Избрано: {selectedClipOption?.label}
+                      Избрано: {selectedClipOption?.title}
+                      {selectedDecoration
+                        ? ` | Елемент: ${selectedDecoration === "flower" ? "цвете" : "панделка"}`
+                        : ""}
                       {babyName.trim() ? ` | Име: ${babyName.trim()}` : ""}
+                    </p>
+                  </div>
+                ) : null}
+
+                {slug === "letter-blocks" ? (
+                  <div className="rounded-3xl border border-border/60 bg-background p-5 md:p-6 mb-8">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      Меню за избор
+                    </p>
+                    <h2 className="font-heading font-extrabold text-xl md:text-2xl mb-4">
+                      Кубчета с име
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      Избери подкатегория и вариант. Визуализацията се обновява
+                      за всяка комбинация.
+                    </p>
+
+                    {selectedBlockOption ? (
+                      <img
+                        src={blocksPreviewImage}
+                        alt={`Визуализация: ${selectedBlockOption.title}`}
+                        className="w-full rounded-2xl border border-border/40 mb-5"
+                      />
+                    ) : null}
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">
+                        1) Избери подкатегория
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBlocksAudience("girl")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedBlocksAudience === "girl"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момичета
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedBlocksAudience("boy")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedBlocksAudience === "boy"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момчета
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">
+                        2) Избери вариант
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {blockOptionsForAudience.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setSelectedBlockOptionId(option.id)}
+                            className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
+                              selectedBlockOptionId === option.id
+                                ? "border-primary bg-primary/10"
+                                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+                            }`}
+                          >
+                            <span className="block font-semibold text-foreground">
+                              {option.title}
+                            </span>
+                            <span className="block text-xs text-muted-foreground mt-0.5">
+                              {option.subtitle}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="blocks-name"
+                        className="text-sm font-heading font-bold"
+                      >
+                        3) Въведи име за кубчетата
+                      </label>
+                      <input
+                        id="blocks-name"
+                        type="text"
+                        value={babyName}
+                        onChange={(event) => setBabyName(event.target.value)}
+                        placeholder="Пример: София"
+                        maxLength={20}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="customer-name-blocks"
+                        className="text-sm font-heading font-bold"
+                      >
+                        4) Твоето име (по желание)
+                      </label>
+                      <input
+                        id="customer-name-blocks"
+                        type="text"
+                        value={customerName}
+                        onChange={(event) =>
+                          setCustomerName(event.target.value)
+                        }
+                        placeholder="Пример: Мария"
+                        maxLength={80}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="customer-email-blocks"
+                        className="text-sm font-heading font-bold"
+                      >
+                        5) Имейл за потвърждение (по желание)
+                      </label>
+                      <input
+                        id="customer-email-blocks"
+                        type="email"
+                        value={customerEmail}
+                        onChange={(event) =>
+                          setCustomerEmail(event.target.value)
+                        }
+                        placeholder="example@email.com"
+                        maxLength={160}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={submitOrder}
+                      disabled={isSubmittingOrder}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isSubmittingOrder
+                        ? "Изпращаме поръчката..."
+                        : "Изпрати поръчка"}
+                    </button>
+
+                    {orderMessage ? (
+                      <p className="mt-3 text-sm text-green-700">
+                        {orderMessage}
+                      </p>
+                    ) : null}
+
+                    {orderError ? (
+                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
+                    ) : null}
+
+                    <p className="text-xs text-muted-foreground">
+                      Избрано: {selectedBlockOption?.title}
+                      {babyName.trim() ? ` | Име: ${babyName.trim()}` : ""}
+                    </p>
+                  </div>
+                ) : null}
+
+                {slug === "photo-frame" ? (
+                  <div className="rounded-3xl border border-border/60 bg-background p-5 md:p-6 mb-8">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      Меню за избор
+                    </p>
+                    <h2 className="font-heading font-extrabold text-xl md:text-2xl mb-4">
+                      Рамка за снимка с име
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      Цветовете са като при Кубчетата. Избери и тип основа:
+                      едноцветна или пръскана.
+                    </p>
+
+                    {selectedFrameOption ? (
+                      <img
+                        src={framePreviewImage}
+                        alt={`Визуализация: ${selectedFrameOption.title}`}
+                        className="w-full rounded-2xl border border-border/40 mb-5"
+                      />
+                    ) : null}
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">
+                        1) Избери подкатегория
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFrameAudience("girl")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedFrameAudience === "girl"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момичета
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFrameAudience("boy")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedFrameAudience === "boy"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момчета
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">
+                        2) Избери цветова комбинация
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {frameOptionsForAudience.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setSelectedFrameOptionId(option.id)}
+                            className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
+                              selectedFrameOptionId === option.id
+                                ? "border-primary bg-primary/10"
+                                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+                            }`}
+                          >
+                            <span className="block font-semibold text-foreground">
+                              {option.title}
+                            </span>
+                            <span className="block text-xs text-muted-foreground mt-0.5">
+                              {option.subtitle}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">
+                        3) Избери основа
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFrameBaseStyle("solid")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedFrameBaseStyle === "solid"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Едноцветна основа
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFrameBaseStyle("splatter")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedFrameBaseStyle === "splatter"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Пръскана основа
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="frame-name"
+                        className="text-sm font-heading font-bold"
+                      >
+                        4) Въведи име за рамката
+                      </label>
+                      <input
+                        id="frame-name"
+                        type="text"
+                        value={babyName}
+                        onChange={(event) => setBabyName(event.target.value)}
+                        placeholder="Пример: Теодор"
+                        maxLength={24}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="customer-name-frame"
+                        className="text-sm font-heading font-bold"
+                      >
+                        5) Твоето име (по желание)
+                      </label>
+                      <input
+                        id="customer-name-frame"
+                        type="text"
+                        value={customerName}
+                        onChange={(event) =>
+                          setCustomerName(event.target.value)
+                        }
+                        placeholder="Пример: Мария"
+                        maxLength={80}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="customer-email-frame"
+                        className="text-sm font-heading font-bold"
+                      >
+                        6) Имейл за потвърждение (по желание)
+                      </label>
+                      <input
+                        id="customer-email-frame"
+                        type="email"
+                        value={customerEmail}
+                        onChange={(event) =>
+                          setCustomerEmail(event.target.value)
+                        }
+                        placeholder="example@email.com"
+                        maxLength={160}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={submitOrder}
+                      disabled={isSubmittingOrder}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isSubmittingOrder
+                        ? "Изпращаме поръчката..."
+                        : "Изпрати поръчка"}
+                    </button>
+
+                    {orderMessage ? (
+                      <p className="mt-3 text-sm text-green-700">
+                        {orderMessage}
+                      </p>
+                    ) : null}
+
+                    {orderError ? (
+                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
+                    ) : null}
+
+                    <p className="text-xs text-muted-foreground">
+                      Избрано: {selectedFrameOption?.title}
+                      {` | Основа: ${selectedFrameBaseStyle === "solid" ? "едноцветна" : "пръскана"}`}
+                      {babyName.trim() ? ` | Име: ${babyName.trim()}` : ""}
+                    </p>
+                  </div>
+                ) : null}
+
+                {slug === "round-platform" ? (
+                  <div className="rounded-3xl border border-border/60 bg-background p-5 md:p-6 mb-8">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      Меню за избор
+                    </p>
+                    <h2 className="font-heading font-extrabold text-xl md:text-2xl mb-4">
+                      Кръгла платформа
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      За момента има по един цвят за всяка подкатегория:
+                      момиче - розово, момче - синьо.
+                    </p>
+
+                    {selectedRoundPlatformOption ? (
+                      <img
+                        src={roundPlatformPreviewImage}
+                        alt={`Визуализация: ${selectedRoundPlatformOption.title}`}
+                        className="w-full rounded-2xl border border-border/40 mb-5"
+                      />
+                    ) : null}
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">
+                        1) Избери подкатегория
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRoundPlatformAudience("girl")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedRoundPlatformAudience === "girl"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момиче
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRoundPlatformAudience("boy")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedRoundPlatformAudience === "boy"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момче
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">2) Цвят</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {roundPlatformOptionsForAudience.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setSelectedRoundPlatformOptionId(option.id)}
+                            className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
+                              selectedRoundPlatformOptionId === option.id
+                                ? "border-primary bg-primary/10"
+                                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+                            }`}
+                          >
+                            <span className="block font-semibold text-foreground">
+                              {option.title}
+                            </span>
+                            <span className="block text-xs text-muted-foreground mt-0.5">
+                              {option.subtitle}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="round-platform-name"
+                        className="text-sm font-heading font-bold"
+                      >
+                        3) Име за надпис (по желание)
+                      </label>
+                      <input
+                        id="round-platform-name"
+                        type="text"
+                        value={babyName}
+                        onChange={(event) => setBabyName(event.target.value)}
+                        placeholder="Пример: Ивон"
+                        maxLength={24}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={submitOrder}
+                      disabled={isSubmittingOrder}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isSubmittingOrder
+                        ? "Изпращаме поръчката..."
+                        : "Изпрати поръчка"}
+                    </button>
+
+                    {orderMessage ? (
+                      <p className="mt-3 text-sm text-green-700">
+                        {orderMessage}
+                      </p>
+                    ) : null}
+
+                    {orderError ? (
+                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
+                    ) : null}
+
+                    <p className="text-xs text-muted-foreground">
+                      Избрано: {selectedRoundPlatformOption?.title}
+                    </p>
+                  </div>
+                ) : null}
+
+                {slug === "platform" ? (
+                  <div className="rounded-3xl border border-border/60 bg-background p-5 md:p-6 mb-8">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      Меню за избор
+                    </p>
+                    <h2 className="font-heading font-extrabold text-xl md:text-2xl mb-4">
+                      Платформа
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      Варианти: синьо за момче и розово за момиче. Показваме
+                      визуализация, не снимка.
+                    </p>
+
+                    {selectedPlatformOption ? (
+                      <img
+                        src={platformPreviewImage}
+                        alt={`Визуализация: ${selectedPlatformOption.title}`}
+                        className="w-full rounded-2xl border border-border/40 mb-5"
+                      />
+                    ) : null}
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">
+                        1) Избери подкатегория
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlatformAudience("girl")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedPlatformAudience === "girl"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момиче
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlatformAudience("boy")}
+                          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                            selectedPlatformAudience === "boy"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          Момче
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <p className="text-sm font-heading font-bold">2) Цвят</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {platformOptionsForAudience.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setSelectedPlatformOptionId(option.id)}
+                            className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
+                              selectedPlatformOptionId === option.id
+                                ? "border-primary bg-primary/10"
+                                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+                            }`}
+                          >
+                            <span className="block font-semibold text-foreground">
+                              {option.title}
+                            </span>
+                            <span className="block text-xs text-muted-foreground mt-0.5">
+                              {option.subtitle}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 mb-5">
+                      <label
+                        htmlFor="platform-name"
+                        className="text-sm font-heading font-bold"
+                      >
+                        3) Име за надпис (по желание)
+                      </label>
+                      <input
+                        id="platform-name"
+                        type="text"
+                        value={babyName}
+                        onChange={(event) => setBabyName(event.target.value)}
+                        placeholder="Пример: Иван"
+                        maxLength={24}
+                        className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={submitOrder}
+                      disabled={isSubmittingOrder}
+                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isSubmittingOrder
+                        ? "Изпращаме поръчката..."
+                        : "Изпрати поръчка"}
+                    </button>
+
+                    {orderMessage ? (
+                      <p className="mt-3 text-sm text-green-700">
+                        {orderMessage}
+                      </p>
+                    ) : null}
+
+                    {orderError ? (
+                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
+                    ) : null}
+
+                    <p className="text-xs text-muted-foreground">
+                      Избрано: {selectedPlatformOption?.title}
                     </p>
                   </div>
                 ) : null}
