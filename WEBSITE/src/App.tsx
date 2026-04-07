@@ -12,6 +12,7 @@ import NotFound from "@/views/NotFound";
 import Login from "@/views/Login";
 import Register from "@/views/Register";
 import Profile from "@/views/Profile";
+import Admin from "@/views/Admin";
 import { AuthProvider } from "@/context/AuthContext";
 import ScrollToTop from "@/components/ScrollToTop";
 
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="/vhod" element={<Login />} />
               <Route path="/registracia" element={<Register />} />
               <Route path="/profil" element={<Profile />} />
+              <Route path="/admin" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

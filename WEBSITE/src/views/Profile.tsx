@@ -22,6 +22,16 @@ type AccountOrder = {
   status?: string;
 };
 
+const orderStatusLabels: Record<string, string> = {
+  new: "Нова",
+  confirmed: "Потвърдена",
+  shipped: "Пътува към вас",
+};
+
+function getOrderStatusLabel(status?: string) {
+  return orderStatusLabels[status || ""] || "Нова";
+}
+
 export default function Profile() {
   const { isAuthenticated, isLoading, token, user } = useAuth();
   const [orders, setOrders] = useState<AccountOrder[]>([]);
@@ -140,7 +150,7 @@ export default function Profile() {
                       Поръчка {order.orderId}
                     </p>
                     <span className="text-xs px-3 py-1 rounded-full bg-muted text-muted-foreground">
-                      {order.status || "new"}
+                      {getOrderStatusLabel(order.status)}
                     </span>
                   </div>
 

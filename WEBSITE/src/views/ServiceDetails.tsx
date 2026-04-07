@@ -878,7 +878,7 @@ const getPlatformPreviewDataUri = (option: PlatformOption, babyName: string) => 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-const CustomPlatformColorNote = () => (
+const CustomCeramicColorNote = () => (
   <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm leading-relaxed text-amber-900">
     Ако искаш комбинация, различна от изброените, пиши ни на{" "}
     <a
@@ -1724,6 +1724,8 @@ export default function ServiceDetails() {
                       </div>
                     </div>
 
+                    <CustomCeramicColorNote />
+
                     <div className="grid gap-3 mb-5">
                       <label
                         htmlFor="blocks-name"
@@ -1884,6 +1886,8 @@ export default function ServiceDetails() {
                         ))}
                       </div>
                     </div>
+
+                    <CustomCeramicColorNote />
 
                     <div className="grid gap-3 mb-5">
                       <p className="text-sm font-heading font-bold">
@@ -2077,7 +2081,7 @@ export default function ServiceDetails() {
                       </div>
                     </div>
 
-                    <CustomPlatformColorNote />
+                    <CustomCeramicColorNote />
 
                     <div className="grid gap-3 mb-5">
                       <label
@@ -2199,7 +2203,7 @@ export default function ServiceDetails() {
                       </div>
                     </div>
 
-                    <CustomPlatformColorNote />
+                    <CustomCeramicColorNote />
 
                     <div className="grid gap-3 mb-5">
                       <label

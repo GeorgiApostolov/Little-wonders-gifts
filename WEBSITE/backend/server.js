@@ -1,6 +1,9 @@
 require("dotenv").config();
 
+const fs = require("fs");
 const http = require("http");
+const path = require("path");
+const { randomUUID } = require("crypto");
 const { MongoClient } = require("mongodb");
 const nodemailer = require("nodemailer");
 
@@ -11,8 +14,13 @@ const mongoDbName = process.env.MONGODB_DB || "littlewondersgifts";
 const servicesCollectionName = process.env.SERVICES_COLLECTION || "services";
 const ordersCollectionName = process.env.ORDERS_COLLECTION || "orders";
 const usersCollectionName = process.env.USERS_COLLECTION || "users";
+const galleryPhotosCollectionName =
+  process.env.GALLERY_PHOTOS_COLLECTION || "galleryPhotos";
 const authJwtSecret = process.env.AUTH_JWT_SECRET || "change-me-in-production";
 const authJwtExpiresIn = process.env.AUTH_JWT_EXPIRES_IN || "7d";
+const adminPassword = process.env.ADMIN_PASSWORD || "1bg2bg3bg";
+const adminJwtSecret =
+  process.env.ADMIN_JWT_SECRET || `${authJwtSecret}-admin`;
 const notificationEmail =
   process.env.ORDER_NOTIFICATION_EMAIL || "info@littlewondersgifts.com";
 const smtpHost = process.env.SMTP_HOST || "";
@@ -22,7 +30,10 @@ const smtpUser = process.env.SMTP_USER || "";
 const smtpPass = process.env.SMTP_PASS || "";
 const smtpFromEmail = process.env.SMTP_FROM_EMAIL || "";
 const emailTimeoutMs = Number(process.env.EMAIL_TIMEOUT_MS) || 8000;
+const maxPhotoUploadBytes =
+  Number(process.env.MAX_PHOTO_UPLOAD_BYTES) || 8 * 1024 * 1024;
 const sofiaTimeZone = "Europe/Sofia";
+const photosDirectory = path.resolve(__dirname, "photos");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -183,6 +194,28 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
+const galleryCategories = [
+  "Керамични фигури",
+  "Клипсове за биберон",
+  "Подаръчни комплекти",
+];
+
+const photoExtensionByMimeType = {
+  "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+};
+
+const photoMimeTypeByExtension = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+};
+
 function parseBearerToken(req) {
   const header = req.headers.authorization;
   if (typeof header !== "string") {
@@ -220,6 +253,18 @@ function signUserToken(user) {
     authJwtSecret,
     {
       expiresIn: authJwtExpiresIn,
+    },
+  );
+}
+
+function signAdminToken() {
+  return jwt.sign(
+    {
+      role: "admin",
+    },
+    adminJwtSecret,
+    {
+      expiresIn: "12h",
     },
   );
 }
@@ -267,6 +312,30 @@ function decodeAuthUserFromRequest(req) {
   }
 }
 
+function decodeAdminSessionFromRequest(req) {
+  const token = parseBearerToken(req);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const payload = jwt.verify(token, adminJwtSecret);
+    if (
+      typeof payload === "object" &&
+      payload &&
+      payload.role === "admin"
+    ) {
+      return {
+        role: "admin",
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function withTimeout(promise, timeoutMs, timeoutMessage) {
   return Promise.race([
     promise,
@@ -298,6 +367,44 @@ function getSofiaTimestamp(date = new Date()) {
 
   const timeZoneName = valueByType.timeZoneName || "EET";
   return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}:${valueByType.second} ${timeZoneName}`;
+}
+
+function normalizeGalleryCategory(value) {
+  const category = sanitizeText(value, 80);
+  if (!category) {
+    return galleryCategories[0];
+  }
+
+  return galleryCategories.includes(category) ? category : galleryCategories[0];
+}
+
+async function ensurePhotosDirectory() {
+  await fs.promises.mkdir(photosDirectory, { recursive: true });
+}
+
+function resolvePhotoExtension(fileName, mimeType) {
+  const normalizedMimeType =
+    typeof mimeType === "string" ? mimeType.trim().toLowerCase() : "";
+  const fromMime = photoExtensionByMimeType[normalizedMimeType] || "";
+  const fromFileName = path.extname(
+    typeof fileName === "string" ? fileName.trim().toLowerCase() : "",
+  );
+
+  if (photoMimeTypeByExtension[fromFileName]) {
+    return fromFileName === ".jpeg" ? ".jpg" : fromFileName;
+  }
+
+  return fromMime;
+}
+
+function getPhotoMimeType(fileName) {
+  const extension = path.extname(fileName).toLowerCase();
+  return photoMimeTypeByExtension[extension] || "application/octet-stream";
+}
+
+function buildPhotoUrl(publicBasePath, fileName) {
+  const resolvedBasePath = publicBasePath || "/backend";
+  return `${resolvedBasePath}/photos/${encodeURIComponent(fileName)}`;
 }
 
 function getEmailTransporter() {
@@ -415,6 +522,131 @@ async function sendOrderEmails(order) {
     skipped: false,
     reason: reasons.length > 0 ? reasons.join(" | ") : undefined,
   };
+}
+
+async function sendOrderStatusEmail(order, nextStatus) {
+  const transporter = getEmailTransporter();
+  if (!transporter) {
+    return {
+      sentCustomer: false,
+      skipped: true,
+      reason: "SMTP is not configured",
+    };
+  }
+
+  if (!order.customerEmail) {
+    return {
+      sentCustomer: false,
+      skipped: true,
+      reason: "Customer email is missing",
+    };
+  }
+
+  const isConfirmed = nextStatus === "confirmed";
+  const subject = isConfirmed
+    ? "Поръчката ти е потвърдена - Little Wonders Gifts"
+    : "Поръчката ти пътува към вас - Little Wonders Gifts";
+  const customerText = [
+    `Здравей, ${order.customerName || "приятелю"}!`,
+    "",
+    isConfirmed
+      ? `Поръчката ти за ${order.serviceTitle || "персонализиран продукт"} е потвърдена и вече се изработва.`
+      : `Поръчката ти за ${order.serviceTitle || "персонализиран продукт"} е изпратена и пътува към вас.`,
+    `Поръчка ID: ${order.orderId}`,
+    `Комбинация: ${order.selectedOptionLabel || "-"}`,
+    ...(order.selectedClipLabel
+      ? [`Вид щипка: ${order.selectedClipLabel}`]
+      : []),
+    ...(order.selectedDecorationLabel
+      ? [`Елемент: ${order.selectedDecorationLabel}`]
+      : []),
+    `Име на бебето: ${order.babyName || "-"}`,
+    "",
+    isConfirmed
+      ? "Ще ти пишем отново, когато поръчката е готова за изпращане."
+      : "Очаквай я съвсем скоро. Благодарим ти, че избра Little Wonders Gifts.",
+    "Little Wonders Gifts",
+  ].join("\n");
+
+  try {
+    await transporter.sendMail({
+      from: smtpFromEmail,
+      to: order.customerEmail,
+      subject,
+      text: customerText,
+      replyTo: notificationEmail,
+    });
+
+    return {
+      sentCustomer: true,
+      skipped: false,
+    };
+  } catch (error) {
+    return {
+      sentCustomer: false,
+      skipped: false,
+      reason: error instanceof Error ? error.message : "Unknown email error",
+    };
+  }
+}
+
+function createPublicGalleryPhoto(photo, publicBasePath) {
+  return {
+    photoId: photo.photoId,
+    title: photo.title,
+    category: photo.category,
+    fileName: photo.fileName,
+    imageUrl: buildPhotoUrl(publicBasePath, photo.fileName),
+    createdAt: photo.createdAt,
+    alt:
+      photo.alt ||
+      `${photo.title || "Снимка"} — ${(photo.category || "").toLowerCase()}`,
+  };
+}
+
+async function fetchGalleryPhotos(db, publicBasePath) {
+  const photos = await db
+    .collection(galleryPhotosCollectionName)
+    .find(
+      { isActive: { $ne: false } },
+      { projection: { _id: 0 } },
+    )
+    .sort({ createdAt: -1, photoId: -1 })
+    .toArray();
+
+  return photos.map((photo) => createPublicGalleryPhoto(photo, publicBasePath));
+}
+
+async function fetchGalleryPhotosFromDirectory(publicBasePath) {
+  await ensurePhotosDirectory();
+  const entries = await fs.promises.readdir(photosDirectory, {
+    withFileTypes: true,
+  });
+
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((fileName) => {
+      const extension = path.extname(fileName).toLowerCase();
+      return Boolean(photoMimeTypeByExtension[extension]);
+    })
+    .sort((left, right) => right.localeCompare(left))
+    .map((fileName) => {
+      const title = path
+        .basename(fileName, path.extname(fileName))
+        .replace(/[-_]+/g, " ")
+        .trim();
+
+      return {
+        photoId: `FILE-${fileName}`,
+        title: title || "Снимка от галерията",
+        category: galleryCategories[0],
+        fileName,
+        imageUrl: buildPhotoUrl(publicBasePath, fileName),
+        createdAt: null,
+        alt: `${title || "Снимка от галерията"} — галерия`,
+      };
+    });
 }
 
 async function getMongoDb() {
@@ -540,6 +772,27 @@ function sendHtml(res, statusCode, html) {
   res.end(html);
 }
 
+function sendFile(res, filePath, contentType) {
+  res.writeHead(200, {
+    "Content-Type": contentType,
+    "Cache-Control": "public, max-age=3600",
+  });
+
+  const stream = fs.createReadStream(filePath);
+  stream.on("error", () => {
+    if (!res.headersSent) {
+      sendJson(res, 500, {
+        status: "error",
+        message: "Неуспешно зареждане на файла",
+      });
+      return;
+    }
+
+    res.destroy();
+  });
+  stream.pipe(res);
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const { routePath, publicBasePath } = resolveRoute(url.pathname);
@@ -639,6 +892,621 @@ const server = http.createServer(async (req, res) => {
       mongoLastCheckedAt: mongoState.lastCheckedAt,
     });
     return;
+  }
+
+  if (routePath.startsWith("/photos/") && req.method === "GET") {
+    const requestedFileName = decodeURIComponent(
+      routePath.slice("/photos/".length),
+    );
+    const safeFileName = path.basename(requestedFileName);
+
+    if (!safeFileName || safeFileName !== requestedFileName) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалидно име на файл",
+      });
+      return;
+    }
+
+    const filePath = path.join(photosDirectory, safeFileName);
+
+    try {
+      const stat = await fs.promises.stat(filePath);
+      if (!stat.isFile()) {
+        sendJson(res, 404, {
+          status: "not_found",
+          message: "Файлът не е намерен",
+        });
+        return;
+      }
+
+      sendFile(res, filePath, getPhotoMimeType(safeFileName));
+      return;
+    } catch {
+      sendJson(res, 404, {
+        status: "not_found",
+        message: "Файлът не е намерен",
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/gallery/photos" && req.method === "GET") {
+    try {
+      const db = await getMongoDb();
+      const photos = await fetchGalleryPhotos(db, publicBasePath);
+
+      sendJson(res, 200, {
+        status: "ok",
+        source: "mongodb",
+        categories: galleryCategories,
+        count: photos.length,
+        photos,
+      });
+      return;
+    } catch (error) {
+      try {
+        const photos = await fetchGalleryPhotosFromDirectory(publicBasePath);
+        sendJson(res, 200, {
+          status: "ok",
+          source: "directory",
+          message:
+            error instanceof Error ? error.message : "Unknown MongoDB error",
+          categories: galleryCategories,
+          count: photos.length,
+          photos,
+        });
+        return;
+      } catch (directoryError) {
+        sendJson(res, 500, {
+          status: "error",
+          message:
+            directoryError instanceof Error
+              ? directoryError.message
+              : "Неуспешно зареждане на галерията",
+          categories: galleryCategories,
+          count: 0,
+          photos: [],
+        });
+        return;
+      }
+    }
+  }
+
+  if (routePath === "/admin/session" && req.method === "POST") {
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    const password =
+      typeof payload.password === "string" ? payload.password : "";
+
+    if (password !== adminPassword) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Грешна админ парола",
+      });
+      return;
+    }
+
+    sendJson(res, 200, {
+      status: "ok",
+      token: signAdminToken(),
+    });
+    return;
+  }
+
+  if (routePath === "/admin/orders" && req.method === "GET") {
+    const adminSession = decodeAdminSessionFromRequest(req);
+    if (!adminSession) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Нужна е админ парола",
+      });
+      return;
+    }
+
+    try {
+      const db = await getMongoDb();
+      const orders = await db
+        .collection(ordersCollectionName)
+        .find({}, { projection: { _id: 0 } })
+        .sort({ createdAt: -1, orderId: -1 })
+        .toArray();
+
+      sendJson(res, 200, {
+        status: "ok",
+        count: orders.length,
+        orders,
+      });
+      return;
+    } catch (error) {
+      sendJson(res, 500, {
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "Неуспешно зареждане",
+      });
+      return;
+    }
+  }
+
+  if (
+    routePath.startsWith("/admin/orders/") &&
+    routePath.endsWith("/status") &&
+    req.method === "POST"
+  ) {
+    const adminSession = decodeAdminSessionFromRequest(req);
+    if (!adminSession) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Нужна е админ парола",
+      });
+      return;
+    }
+
+    const orderId = decodeURIComponent(
+      routePath.slice(
+        "/admin/orders/".length,
+        routePath.length - "/status".length,
+      ),
+    );
+
+    if (!orderId) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Липсва ID на поръчката",
+      });
+      return;
+    }
+
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    const nextStatus = sanitizeText(payload.status, 40);
+    if (nextStatus !== "confirmed" && nextStatus !== "shipped") {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден статус",
+      });
+      return;
+    }
+
+    try {
+      const db = await getMongoDb();
+      const ordersCollection = db.collection(ordersCollectionName);
+      const existingOrder = await ordersCollection.findOne(
+        { orderId },
+        { projection: { _id: 0 } },
+      );
+
+      if (!existingOrder) {
+        sendJson(res, 404, {
+          status: "not_found",
+          message: "Поръчката не е намерена",
+        });
+        return;
+      }
+
+      if (existingOrder.status === nextStatus) {
+        sendJson(res, 200, {
+          status: "ok",
+          message: "Статусът вече е зададен",
+          order: existingOrder,
+          email: {
+            sentCustomer: false,
+            skipped: true,
+            reason: "Status already set",
+          },
+        });
+        return;
+      }
+
+      if (existingOrder.status === "shipped" && nextStatus === "confirmed") {
+        sendJson(res, 409, {
+          status: "error",
+          message: "Изпратена поръчка не може да се върне назад",
+        });
+        return;
+      }
+
+      const updatedAt = getSofiaTimestamp();
+      const statusUpdates =
+        nextStatus === "confirmed"
+          ? { confirmedAt: updatedAt }
+          : { shippedAt: updatedAt };
+
+      const updateResult = await ordersCollection.findOneAndUpdate(
+        { orderId },
+        {
+          $set: {
+            status: nextStatus,
+            updatedAt,
+            ...statusUpdates,
+          },
+        },
+        {
+          returnDocument: "after",
+          projection: { _id: 0 },
+        },
+      );
+
+      const updatedOrder = updateResult;
+      if (!updatedOrder) {
+        sendJson(res, 404, {
+          status: "not_found",
+          message: "Поръчката не е намерена след обновяване",
+        });
+        return;
+      }
+
+      let emailResult = null;
+      try {
+        emailResult = await withTimeout(
+          sendOrderStatusEmail(updatedOrder, nextStatus),
+          emailTimeoutMs,
+          "Email sending timeout",
+        );
+      } catch (emailError) {
+        emailResult = {
+          sentCustomer: false,
+          skipped: false,
+          reason:
+            emailError instanceof Error
+              ? emailError.message
+              : "Unknown email error",
+        };
+      }
+
+      sendJson(res, 200, {
+        status: "ok",
+        message:
+          nextStatus === "confirmed"
+            ? "Поръчката е потвърдена"
+            : "Поръчката е маркирана като изпратена",
+        order: updatedOrder,
+        email: emailResult,
+      });
+      return;
+    } catch (error) {
+      sendJson(res, 500, {
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "Неуспешна промяна на статус",
+      });
+      return;
+    }
+  }
+
+  if (
+    routePath.startsWith("/admin/orders/") &&
+    !routePath.endsWith("/status") &&
+    req.method === "PUT"
+  ) {
+    const adminSession = decodeAdminSessionFromRequest(req);
+    if (!adminSession) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Нужна е админ парола",
+      });
+      return;
+    }
+
+    const orderId = decodeURIComponent(
+      routePath.slice("/admin/orders/".length),
+    );
+
+    if (!orderId) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Липсва ID на поръчката",
+      });
+      return;
+    }
+
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    try {
+      const db = await getMongoDb();
+      const ordersCollection = db.collection(ordersCollectionName);
+      const existingOrder = await ordersCollection.findOne(
+        { orderId },
+        { projection: { _id: 0 } },
+      );
+
+      if (!existingOrder) {
+        sendJson(res, 404, {
+          status: "not_found",
+          message: "Поръчката не е намерена",
+        });
+        return;
+      }
+
+      const serviceTitle = sanitizeText(payload.serviceTitle, 140);
+      const selectedOptionLabel = sanitizeText(payload.selectedOptionLabel, 160);
+      const selectedClipLabel = sanitizeText(payload.selectedClipLabel, 80);
+      const selectedDecorationLabel = sanitizeText(
+        payload.selectedDecorationLabel,
+        80,
+      );
+      const babyName = sanitizeText(payload.babyName, 60);
+      const customerName = sanitizeText(payload.customerName, 80);
+      const customerEmailRaw = sanitizeText(
+        payload.customerEmail,
+        160,
+      ).toLowerCase();
+      const customerEmail =
+        customerEmailRaw && !isValidEmail(customerEmailRaw)
+          ? null
+          : customerEmailRaw;
+
+      if (customerEmail === null) {
+        sendJson(res, 400, {
+          status: "error",
+          message: "Имейлът не е валиден",
+        });
+        return;
+      }
+
+      if (!serviceTitle || !selectedOptionLabel || !babyName) {
+        sendJson(res, 400, {
+          status: "error",
+          message:
+            "Услугата, комбинацията и името на бебето са задължителни.",
+        });
+        return;
+      }
+
+      const updatedAt = getSofiaTimestamp();
+      const updatedOrder = await ordersCollection.findOneAndUpdate(
+        { orderId },
+        {
+          $set: {
+            serviceTitle,
+            selectedOptionLabel,
+            selectedClipLabel,
+            selectedDecorationLabel,
+            babyName,
+            customerName,
+            customerEmail: customerEmail || "",
+            updatedAt,
+          },
+        },
+        {
+          returnDocument: "after",
+          projection: { _id: 0 },
+        },
+      );
+
+      if (!updatedOrder) {
+        sendJson(res, 404, {
+          status: "not_found",
+          message: "Поръчката не е намерена след редакция",
+        });
+        return;
+      }
+
+      sendJson(res, 200, {
+        status: "ok",
+        message: "Поръчката е редактирана",
+        order: updatedOrder,
+      });
+      return;
+    } catch (error) {
+      sendJson(res, 500, {
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "Неуспешна редакция на поръчката",
+      });
+      return;
+    }
+  }
+
+  if (
+    routePath.startsWith("/admin/orders/") &&
+    !routePath.endsWith("/status") &&
+    req.method === "DELETE"
+  ) {
+    const adminSession = decodeAdminSessionFromRequest(req);
+    if (!adminSession) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Нужна е админ парола",
+      });
+      return;
+    }
+
+    const orderId = decodeURIComponent(
+      routePath.slice("/admin/orders/".length),
+    );
+
+    if (!orderId) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Липсва ID на поръчката",
+      });
+      return;
+    }
+
+    try {
+      const db = await getMongoDb();
+      const ordersCollection = db.collection(ordersCollectionName);
+      const existingOrder = await ordersCollection.findOne(
+        { orderId },
+        { projection: { _id: 0 } },
+      );
+
+      if (!existingOrder) {
+        sendJson(res, 404, {
+          status: "not_found",
+          message: "Поръчката не е намерена",
+        });
+        return;
+      }
+
+      await ordersCollection.deleteOne({ orderId });
+
+      sendJson(res, 200, {
+        status: "ok",
+        message: "Поръчката е изтрита",
+        order: existingOrder,
+      });
+      return;
+    } catch (error) {
+      sendJson(res, 500, {
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "Неуспешно изтриване на поръчката",
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/admin/gallery/photos" && req.method === "POST") {
+    const adminSession = decodeAdminSessionFromRequest(req);
+    if (!adminSession) {
+      sendJson(res, 401, {
+        status: "error",
+        message: "Нужна е админ парола",
+      });
+      return;
+    }
+
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    const title = sanitizeText(payload.title, 140);
+    const category = normalizeGalleryCategory(payload.category);
+    const fileName = sanitizeText(payload.fileName, 160);
+    const mimeType = sanitizeText(payload.mimeType, 80).toLowerCase();
+    const base64Data =
+      typeof payload.base64Data === "string" ? payload.base64Data.trim() : "";
+
+    if (!title || !fileName || !mimeType || !base64Data) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Липсват данни за снимката",
+      });
+      return;
+    }
+
+    const resolvedExtension = resolvePhotoExtension(fileName, mimeType);
+    if (!resolvedExtension) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Позволени са само JPG, PNG, WEBP и GIF снимки",
+      });
+      return;
+    }
+
+    const normalizedBase64 = base64Data.replace(
+      /^data:[^;]+;base64,/i,
+      "",
+    );
+
+    let fileBuffer = null;
+    try {
+      fileBuffer = Buffer.from(normalizedBase64, "base64");
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалидна base64 снимка",
+      });
+      return;
+    }
+
+    if (!fileBuffer || fileBuffer.length === 0) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Каченият файл е празен",
+      });
+      return;
+    }
+
+    if (fileBuffer.length > maxPhotoUploadBytes) {
+      sendJson(res, 400, {
+        status: "error",
+        message: `Снимката е твърде голяма. Максимумът е ${Math.round(maxPhotoUploadBytes / (1024 * 1024))} MB.`,
+      });
+      return;
+    }
+
+    const now = getSofiaTimestamp();
+    const storedFileName = `${Date.now()}-${randomUUID()}${resolvedExtension}`;
+    const photoDoc = {
+      photoId: `PHOTO-${Date.now()}`,
+      title,
+      category,
+      fileName: storedFileName,
+      alt: `${title} — ${category.toLowerCase()}`,
+      createdAt: now,
+      updatedAt: now,
+      isActive: true,
+    };
+    const storedFilePath = path.join(photosDirectory, storedFileName);
+
+    try {
+      await ensurePhotosDirectory();
+      await fs.promises.writeFile(storedFilePath, fileBuffer);
+
+      const db = await getMongoDb();
+      await db.collection(galleryPhotosCollectionName).insertOne(photoDoc);
+
+      sendJson(res, 201, {
+        status: "ok",
+        message: "Снимката е качена успешно",
+        photo: createPublicGalleryPhoto(photoDoc, publicBasePath),
+      });
+      return;
+    } catch (error) {
+      try {
+        await fs.promises.unlink(storedFilePath);
+      } catch {
+        // Ignore cleanup errors.
+      }
+
+      sendJson(res, 500, {
+        status: "error",
+        message:
+          error instanceof Error ? error.message : "Неуспешно качване на снимката",
+      });
+      return;
+    }
   }
 
   if (routePath === "/services") {
