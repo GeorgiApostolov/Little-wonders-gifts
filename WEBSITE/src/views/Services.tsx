@@ -10,6 +10,11 @@ import {
   Palette,
   PartyPopper,
 } from "lucide-react";
+import {
+  customColorInquiryText,
+  getServiceCatalogMeta,
+  normalizeServiceSlug,
+} from "@/lib/serviceCatalog";
 
 type ServiceItem = {
   slug?: string;
@@ -19,6 +24,8 @@ type ServiceItem = {
   desc: string;
   cta?: string;
   order?: number;
+  priceLabel?: string;
+  customColorInquiryText?: string;
 };
 
 const fallbackServiceCards: ServiceItem[] = [
@@ -41,8 +48,8 @@ const fallbackServiceCards: ServiceItem[] = [
   {
     slug: "platform",
     icon: "palette",
-    title: "Платформа",
-    desc: "Декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    title: "Полуовална платформа",
+    desc: "Декоративна полуовална платформа, идеална за фотосесия, украса или специален повод.",
     cta: "Виж варианти",
     order: 4,
   },
@@ -73,14 +80,6 @@ const iconMap = {
   party: PartyPopper,
   gift: Gift,
 } as const;
-
-const normalizeServiceSlug = (slug?: string) => {
-  if (!slug) {
-    return undefined;
-  }
-
-  return slug === "blocks" ? "letter-blocks" : slug;
-};
 
 const normalizeServiceItem = (service: ServiceItem): ServiceItem => ({
   ...service,
@@ -207,7 +206,8 @@ const Services = () => {
               Нашите <span className="text-primary">услуги</span> 🎨
             </h1>
             <p className="mx-auto max-w-xl text-muted-foreground">
-              Открий как можем да създадем перфектния подарък за теб.
+              Разгледай стандартните цени и готовите варианти. За различна
+              комбинация от цветове се прави запитване.
             </p>
             {isLoading ? (
               <p className="mt-2 text-xs text-muted-foreground">
@@ -229,6 +229,9 @@ const Services = () => {
                   : "gift";
               const Icon = iconMap[iconKey as keyof typeof iconMap] || Gift;
               const slug = normalizeServiceSlug(service.slug);
+              const serviceMeta = getServiceCatalogMeta(slug);
+              const title = serviceMeta?.title || service.title;
+              const priceLabel = service.priceLabel || serviceMeta?.priceLabel;
               const placeholderImage = createServicePlaceholder(slug);
               const imageSrc =
                 (typeof service.image === "string" && service.image.trim()) ||
@@ -243,7 +246,7 @@ const Services = () => {
                   <div className="relative aspect-[5/4] overflow-hidden bg-muted">
                     <img
                       src={imageSrc}
-                      alt={`Снимка за ${service.title}`}
+                      alt={`Снимка за ${title}`}
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       onError={(event) => {
@@ -253,6 +256,16 @@ const Services = () => {
                       }}
                     />
                     <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
+                    {priceLabel ? (
+                      <div className="absolute left-4 top-4 rounded-2xl bg-primary px-3 py-2 text-primary-foreground shadow-sm">
+                        <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] opacity-80">
+                          Цена
+                        </span>
+                        <span className="font-heading text-sm font-extrabold">
+                          {priceLabel}
+                        </span>
+                      </div>
+                    ) : null}
                     <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 shadow-sm backdrop-blur">
                       <Icon className="h-5 w-5 text-foreground" />
                     </div>
@@ -260,10 +273,13 @@ const Services = () => {
 
                   <div className="flex flex-1 flex-col gap-4 p-6 md:p-7">
                     <h2 className="font-heading text-xl font-bold leading-tight">
-                      {service.title}
+                      {title}
                     </h2>
                     <p className="flex-1 text-sm leading-relaxed text-muted-foreground">
                       {service.desc}
+                    </p>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {service.customColorInquiryText || customColorInquiryText}
                     </p>
                     <Link
                       to={
@@ -308,11 +324,11 @@ const Services = () => {
                 <Palette className="h-6 w-6 text-foreground" />
               </div>
               <h3 className="mb-2 font-heading text-lg font-bold">
-                Цветове и представяне
+                Цени и цветове
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Цветовете ще бъдат представени предварително, за да изберете
-                най-подходящата комбинация за вашия подарък.
+                Цените са за показаните стандартни варианти. За различна
+                цветова комбинация се прави запитване.
               </p>
             </div>
 

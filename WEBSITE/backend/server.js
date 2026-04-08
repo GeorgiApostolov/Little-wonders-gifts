@@ -45,6 +45,9 @@ const defaultServices = [
     title: "Клипсове за биберон с име",
     desc: "Персонализирани клипсове от хранителен силикон и натурално дърво. Безопасни, практични и невероятно сладки.",
     cta: "Избери цветове",
+    priceLabel: "20€",
+    customColorInquiryText:
+      "За различна комбинация от цветове се прави запитване.",
     order: 1,
     isActive: true,
   },
@@ -54,15 +57,21 @@ const defaultServices = [
     title: "Рамка за снимка",
     desc: "Нежна рамка за снимка с име по желание на бебето. Специален спомен, който остава красив акцент в детската стая.",
     cta: "Поръчай рамка",
+    priceLabel: "25€",
+    customColorInquiryText:
+      "За различна комбинация от цветове се прави запитване.",
     order: 3,
     isActive: true,
   },
   {
     slug: "platform",
     icon: "palette",
-    title: "Платформа",
-    desc: "Декоративна платформа, идеална за фотосесия, украса или специален повод.",
+    title: "Полуовална платформа",
+    desc: "Декоративна полуовална платформа, идеална за фотосесия, украса или специален повод.",
     cta: "Виж варианти",
+    priceLabel: "30€",
+    customColorInquiryText:
+      "За различна комбинация от цветове се прави запитване.",
     order: 4,
     isActive: true,
   },
@@ -72,6 +81,9 @@ const defaultServices = [
     title: "Кръгла платформа",
     desc: "Кръгла декоративна платформа, идеална за фотосесия, украса или специален повод.",
     cta: "Избери модел",
+    priceLabel: "35€",
+    customColorInquiryText:
+      "За различна комбинация от цветове се прави запитване.",
     order: 5,
     isActive: true,
   },
@@ -81,10 +93,59 @@ const defaultServices = [
     title: "Кубчета",
     desc: "Декоративни кубчета само с букви за изписване на името на бебето. Идеални за фотосесия, украса или специален повод.",
     cta: "Направи запитване",
+    priceLabel: "5€ / бр.",
+    customColorInquiryText:
+      "За различна комбинация от цветове се прави запитване.",
     order: 6,
     isActive: true,
   },
 ];
+
+function normalizeServiceSlug(slug) {
+  if (!slug) {
+    return "";
+  }
+
+  return slug === "blocks" ? "letter-blocks" : slug;
+}
+
+function resolveDatabaseServiceSlug(slug) {
+  if (!slug) {
+    return "";
+  }
+
+  return slug === "letter-blocks" ? "blocks" : slug;
+}
+
+const defaultServiceBySlug = Object.fromEntries(
+  defaultServices.map((service) => {
+    const normalizedSlug = normalizeServiceSlug(service.slug);
+    return [
+      normalizedSlug,
+      {
+        ...service,
+        slug: normalizedSlug,
+      },
+    ];
+  }),
+);
+
+function enrichService(service) {
+  const normalizedSlug = normalizeServiceSlug(service?.slug);
+  const defaults = defaultServiceBySlug[normalizedSlug];
+
+  return {
+    ...service,
+    slug: normalizedSlug || service?.slug || "",
+    title: defaults?.title || service?.title || "",
+    desc: service?.desc || defaults?.desc || "",
+    icon: service?.icon || defaults?.icon,
+    order: service?.order ?? defaults?.order,
+    priceLabel: service?.priceLabel || defaults?.priceLabel,
+    customColorInquiryText:
+      service?.customColorInquiryText || defaults?.customColorInquiryText,
+  };
+}
 
 let mongoClient = null;
 let emailTransporter = null;
@@ -697,7 +758,7 @@ async function fetchActiveServices(db) {
     .sort({ order: 1, title: 1 })
     .toArray();
 
-  return services;
+  return services.map((service) => enrichService(service));
 }
 
 async function fetchActiveServiceBySlug(db, slug) {
@@ -706,10 +767,12 @@ async function fetchActiveServiceBySlug(db, slug) {
   }
 
   const collection = db.collection(servicesCollectionName);
-  return collection.findOne(
-    { slug, isActive: { $ne: false } },
+  const service = await collection.findOne(
+    { slug: resolveDatabaseServiceSlug(slug), isActive: { $ne: false } },
     { projection: { _id: 0 } },
   );
+
+  return service ? enrichService(service) : null;
 }
 
 async function refreshMongoState() {
@@ -1530,7 +1593,7 @@ const server = http.createServer(async (req, res) => {
         source: "fallback",
         message,
         count: defaultServices.length,
-        services: defaultServices,
+        services: defaultServices.map((service) => enrichService(service)),
       });
       return;
     }

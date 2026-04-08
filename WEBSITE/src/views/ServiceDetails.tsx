@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import {
+  customColorInquiryText as defaultCustomColorInquiryText,
+  getServiceCatalogMeta,
+  standardServicePriceNote,
+} from "@/lib/serviceCatalog";
 
 type ServiceDetails = {
   slug: string;
@@ -10,6 +15,8 @@ type ServiceDetails = {
   longDescription?: string;
   bullets?: string[];
   bulletPoints?: string[];
+  priceLabel?: string;
+  customColorInquiryText?: string;
 };
 
 const fallbackServiceDetailsBySlug: Record<string, ServiceDetails> = {
@@ -33,9 +40,9 @@ const fallbackServiceDetailsBySlug: Record<string, ServiceDetails> = {
   },
   platform: {
     slug: "platform",
-    title: "Платформа",
+    title: "Полуовална платформа",
     longDescription:
-      "Декоративна платформа за фотосесии, украса и специални поводи.",
+      "Декоративна полуовална платформа за фотосесии, украса и специални поводи.",
   },
   "round-platform": {
     slug: "round-platform",
@@ -878,9 +885,9 @@ const getPlatformPreviewDataUri = (option: PlatformOption, babyName: string) => 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-const CustomCeramicColorNote = () => (
+const CustomColorInquiryNote = () => (
   <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm leading-relaxed text-amber-900">
-    Ако искаш комбинация, различна от изброените, пиши ни на{" "}
+    За различна комбинация от цветове се прави запитване. Пиши ни на{" "}
     <a
       href="mailto:hello@littlewondersgifts.com"
       className="font-semibold underline decoration-amber-500/70 underline-offset-2"
@@ -1242,7 +1249,11 @@ export default function ServiceDetails() {
   }, [platformOptionsForAudience, selectedPlatformOptionId]);
 
   const bullets = service?.bullets || service?.bulletPoints || [];
-  const heading = service?.title || "Детайли за услуга";
+  const serviceMeta = getServiceCatalogMeta(slug);
+  const heading = serviceMeta?.title || service?.title || "Детайли за услуга";
+  const priceLabel = service?.priceLabel || serviceMeta?.priceLabel;
+  const customColorInquiryText =
+    service?.customColorInquiryText || defaultCustomColorInquiryText;
   const longDescription =
     service?.longDescription ||
     service?.desc ||
@@ -1415,6 +1426,20 @@ export default function ServiceDetails() {
                   {longDescription}
                 </p>
 
+                {priceLabel ? (
+                  <div className="mb-6 rounded-3xl border border-primary/15 bg-primary/5 p-5 md:p-6">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                      Цена
+                    </p>
+                    <p className="mb-2 font-heading text-2xl font-extrabold md:text-3xl">
+                      {priceLabel}
+                    </p>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {standardServicePriceNote} {customColorInquiryText}
+                    </p>
+                  </div>
+                ) : null}
+
                 {bullets.length > 0 ? (
                   <ul className="space-y-2 mb-8">
                     {bullets.map((item) => (
@@ -1440,6 +1465,8 @@ export default function ServiceDetails() {
                       Избери подкатегория и вариант. За всяка подкатегория се
                       показва отделна визуализация.
                     </p>
+
+                    <CustomColorInquiryNote />
 
                     {selectedClipOption ? (
                       <img
@@ -1724,7 +1751,7 @@ export default function ServiceDetails() {
                       </div>
                     </div>
 
-                    <CustomCeramicColorNote />
+                    <CustomColorInquiryNote />
 
                     <div className="grid gap-3 mb-5">
                       <label
@@ -1887,7 +1914,7 @@ export default function ServiceDetails() {
                       </div>
                     </div>
 
-                    <CustomCeramicColorNote />
+                    <CustomColorInquiryNote />
 
                     <div className="grid gap-3 mb-5">
                       <p className="text-sm font-heading font-bold">
@@ -2019,6 +2046,8 @@ export default function ServiceDetails() {
                       момче. Показваме визуализация, не снимка.
                     </p>
 
+                    <CustomColorInquiryNote />
+
                     {selectedRoundPlatformOption ? (
                       <img
                         src={roundPlatformPreviewImage}
@@ -2081,8 +2110,6 @@ export default function ServiceDetails() {
                       </div>
                     </div>
 
-                    <CustomCeramicColorNote />
-
                     <div className="grid gap-3 mb-5">
                       <label
                         htmlFor="round-platform-name"
@@ -2134,12 +2161,14 @@ export default function ServiceDetails() {
                       Меню за избор
                     </p>
                     <h2 className="font-heading font-extrabold text-xl md:text-2xl mb-4">
-                      Платформа
+                      Полуовална платформа
                     </h2>
                     <p className="text-sm text-muted-foreground mb-5">
                       Избери една от готовите цветови комбинации за момиче или
                       момче. Показваме визуализация, не снимка.
                     </p>
+
+                    <CustomColorInquiryNote />
 
                     {selectedPlatformOption ? (
                       <img
@@ -2202,8 +2231,6 @@ export default function ServiceDetails() {
                         ))}
                       </div>
                     </div>
-
-                    <CustomCeramicColorNote />
 
                     <div className="grid gap-3 mb-5">
                       <label
