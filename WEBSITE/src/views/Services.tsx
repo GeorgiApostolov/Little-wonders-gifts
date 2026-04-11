@@ -198,11 +198,11 @@ const persistServicesCache = (services: ServiceItem[]) => {
 };
 
 const plannedImageBySlug: Record<string, string> = {
-  "pacifier-clips": "/images/services/pacifier-clips.jpg",
-  "photo-frame": "/images/services/photo-frame.jpg",
-  platform: "/images/services/platform.jpg",
-  "round-platform": "/images/services/round-platform.jpg",
-  "letter-blocks": "/images/services/letter-blocks.jpg",
+  "pacifier-clips": "/images/services/klipsove.jpg",
+  "photo-frame": "/images/services/ramki.jpg",
+  platform: "/images/services/platforma.jpg",
+  "round-platform": "/images/services/krugla%20platforma.jpg",
+  "letter-blocks": "/images/services/kubcheta.jpg",
 };
 
 const placeholderPaletteBySlug: Record<string, { from: string; to: string }> = {
@@ -370,8 +370,8 @@ const Services = () => {
               const priceLabel = service.priceLabel || serviceMeta?.priceLabel;
               const placeholderImage = createServicePlaceholder(slug);
               const imageSrc =
-                (typeof service.image === "string" && service.image.trim()) ||
                 (slug ? plannedImageBySlug[slug] || "" : "") ||
+                (typeof service.image === "string" && service.image.trim()) ||
                 placeholderImage;
 
               return (
