@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -18,20 +18,24 @@ const Header = () => {
   const { pathname } = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
 
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   return (
     <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
-      <div className="container mx-auto flex items-center justify-between h-16 px-4">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:h-[4.5rem]">
         {/* Logo */}
-        <Link to="/" className="flex items-center h-16 overflow-hidden">
+        <Link to="/" className="flex h-16 items-center overflow-hidden lg:h-[4.5rem]">
           <img
             src="/logo.webp"
             alt="Little Wonders Gifts"
-            className="h-14 md:h-16 w-auto object-contain"
+            className="h-12 w-auto object-contain sm:h-14 lg:h-16"
           />
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden items-center gap-1 lg:flex">
           {navItems.map((item) => (
             <Link
               key={item.to}
@@ -83,7 +87,7 @@ const Header = () => {
         {/* Mobile toggle */}
         <button
           onClick={() => setOpen(!open)}
-          className="md:hidden p-2 rounded-xl hover:bg-accent transition-colors"
+          className="rounded-xl p-2 transition-colors hover:bg-accent lg:hidden"
           aria-label="Отвори менюто"
         >
           {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -92,7 +96,7 @@ const Header = () => {
 
       {/* Mobile nav */}
       {open && (
-        <nav className="md:hidden border-t border-border/50 bg-background px-4 pb-4">
+        <nav className="border-t border-border/50 bg-background/95 px-4 pb-4 backdrop-blur-md lg:hidden">
           {navItems.map((item) => (
             <Link
               key={item.to}

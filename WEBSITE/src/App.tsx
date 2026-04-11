@@ -21,9 +21,9 @@ export default function App() {
     <AppProviders>
       <AuthProvider>
         <ScrollToTop />
-        <div className="flex min-h-screen flex-col">
+        <div className="flex min-h-screen min-w-0 flex-col overflow-x-hidden">
           <Header />
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/galeriya" element={<Gallery />} />

@@ -11,6 +11,11 @@ import {
   PartyPopper,
 } from "lucide-react";
 import {
+  getBackendBaseUrl,
+  parseApiErrorMessage,
+  readJsonResponse,
+} from "@/lib/backend";
+import {
   customColorInquiryText,
   getServiceCatalogMeta,
   normalizeServiceSlug,
@@ -26,6 +31,17 @@ type ServiceItem = {
   order?: number;
   priceLabel?: string;
   customColorInquiryText?: string;
+};
+
+type ServicesApiPayload = {
+  status?: string;
+  message?: string;
+  services?: ServiceItem[];
+};
+
+type ServicesCacheEntry = {
+  savedAt: number;
+  services: ServiceItem[];
 };
 
 const fallbackServiceCards: ServiceItem[] = [
@@ -86,6 +102,101 @@ const normalizeServiceItem = (service: ServiceItem): ServiceItem => ({
   slug: normalizeServiceSlug(service.slug),
 });
 
+const servicesCacheStorageKey = "lw_services_cache_v1";
+const servicesCacheTtlMs = 5 * 60 * 1000;
+
+let inMemoryServicesCache: ServicesCacheEntry | null = null;
+
+const isCacheFresh = (cacheEntry: ServicesCacheEntry) =>
+  Date.now() - cacheEntry.savedAt <= servicesCacheTtlMs;
+
+const sanitizeServices = (services: ServiceItem[]) =>
+  services
+    .filter(
+      (service): service is ServiceItem =>
+        Boolean(service) && typeof service === "object",
+    )
+    .map((service) => normalizeServiceItem(service))
+    .filter(
+      (service) =>
+        typeof service.title === "string" &&
+        service.title.trim().length > 0 &&
+        typeof service.desc === "string" &&
+        service.desc.trim().length > 0,
+    );
+
+const readCachedServices = (): ServiceItem[] | null => {
+  if (
+    inMemoryServicesCache &&
+    isCacheFresh(inMemoryServicesCache) &&
+    inMemoryServicesCache.services.length > 0
+  ) {
+    return inMemoryServicesCache.services;
+  }
+
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawCache = window.localStorage.getItem(servicesCacheStorageKey);
+    if (!rawCache) {
+      return null;
+    }
+
+    const parsedCache = JSON.parse(rawCache) as Partial<ServicesCacheEntry>;
+    if (
+      typeof parsedCache.savedAt !== "number" ||
+      !Array.isArray(parsedCache.services)
+    ) {
+      window.localStorage.removeItem(servicesCacheStorageKey);
+      return null;
+    }
+
+    const cacheEntry: ServicesCacheEntry = {
+      savedAt: parsedCache.savedAt,
+      services: sanitizeServices(parsedCache.services as ServiceItem[]),
+    };
+
+    if (!isCacheFresh(cacheEntry) || cacheEntry.services.length === 0) {
+      window.localStorage.removeItem(servicesCacheStorageKey);
+      return null;
+    }
+
+    inMemoryServicesCache = cacheEntry;
+    return cacheEntry.services;
+  } catch {
+    return null;
+  }
+};
+
+const persistServicesCache = (services: ServiceItem[]) => {
+  const sanitizedServices = sanitizeServices(services);
+  if (sanitizedServices.length === 0) {
+    return;
+  }
+
+  const cacheEntry: ServicesCacheEntry = {
+    savedAt: Date.now(),
+    services: sanitizedServices,
+  };
+
+  inMemoryServicesCache = cacheEntry;
+
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      servicesCacheStorageKey,
+      JSON.stringify(cacheEntry),
+    );
+  } catch {
+    // Ignore storage quota errors and keep in-memory cache only.
+  }
+};
+
 const plannedImageBySlug: Record<string, string> = {
   "pacifier-clips": "/images/services/pacifier-clips.jpg",
   "photo-frame": "/images/services/photo-frame.jpg",
@@ -126,51 +237,75 @@ const createServicePlaceholder = (slug?: string) => {
 };
 
 const Services = () => {
-  const [serviceCards, setServiceCards] = useState<ServiceItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const cachedServices = useMemo(() => readCachedServices(), []);
+  const [serviceCards, setServiceCards] = useState<ServiceItem[]>(
+    () => cachedServices || fallbackServiceCards,
+  );
+  const [isLoading, setIsLoading] = useState(!cachedServices);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const backendBaseUrl = useMemo(() => {
-    const configured = import.meta.env.VITE_BACKEND_BASE_URL;
-    if (!configured) {
-      return "/backend";
-    }
-
-    return configured.replace(/\/+$/, "");
-  }, []);
+  const backendBaseUrl = useMemo(() => getBackendBaseUrl(), []);
 
   useEffect(() => {
     let isMounted = true;
+    const abortController = new AbortController();
 
     const loadServices = async () => {
+      if (!cachedServices) {
+        setIsLoading(true);
+      }
+
+      setFetchError(null);
+
       try {
-        const response = await fetch(`${backendBaseUrl}/services`);
+        const response = await fetch(`${backendBaseUrl}/services`, {
+          signal: abortController.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        const payload = await readJsonResponse<ServicesApiPayload>(response);
+
         if (!response.ok) {
-          throw new Error(`Services request failed with status ${response.status}`);
+          throw new Error(
+            parseApiErrorMessage(payload, "Неуспешно зареждане на услугите."),
+          );
         }
 
-        const payload = await response.json();
-        const services = Array.isArray(payload?.services) ? payload.services : [];
-        const normalizedServices = services.map((service) =>
-          normalizeServiceItem(service as ServiceItem),
-        );
+        const services = Array.isArray(payload.services) ? payload.services : [];
+        const normalizedServices = sanitizeServices(services);
 
         if (isMounted) {
-          setServiceCards(
+          const resolvedServices =
             normalizedServices.length > 0
               ? normalizedServices
-              : fallbackServiceCards,
+              : fallbackServiceCards;
+
+          persistServicesCache(resolvedServices);
+          setServiceCards(
+            resolvedServices,
           );
           setFetchError(null);
         }
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+
         if (isMounted) {
           const message =
             error instanceof Error
               ? error.message
               : "Неуспешно зареждане на услугите";
-          setFetchError(message);
-          setServiceCards(fallbackServiceCards);
+
+          setServiceCards((currentCards) =>
+            currentCards.length > 0 ? currentCards : fallbackServiceCards,
+          );
+
+          if (!cachedServices) {
+            setFetchError(message);
+          }
         }
       } finally {
         if (isMounted) {
@@ -183,8 +318,9 @@ const Services = () => {
 
     return () => {
       isMounted = false;
+      abortController.abort();
     };
-  }, [backendBaseUrl]);
+  }, [backendBaseUrl, cachedServices]);
 
   const orderedServiceCards = useMemo(
     () =>

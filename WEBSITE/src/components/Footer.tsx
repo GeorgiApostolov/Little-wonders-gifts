@@ -4,18 +4,18 @@ import { Instagram, Facebook, Mail } from "lucide-react";
 const Footer = () => {
   return (
     <footer className="bg-baby-blue-light border-t border-border/30">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="container mx-auto px-4 py-10 sm:py-12">
+        <div className="grid grid-cols-1 gap-8 text-center md:grid-cols-3 md:text-left">
           {/* Brand */}
           <div>
-            <Link to="/" className="inline-flex items-center mb-4">
+            <Link to="/" className="mb-3 inline-flex items-center sm:mb-4">
               <img
                 src="/logo.webp"
                 alt="Little Wonders Gifts"
-                className="h-24 md:h-28 w-auto object-contain"
+                className="h-20 w-auto object-contain sm:h-24 md:h-28"
               />
             </Link>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted-foreground md:mx-0">
               Ръчно изработени подаръци за бебета и деца, създадени с любов и
               внимание към всеки детайл.
             </p>
@@ -49,7 +49,7 @@ const Footer = () => {
             <h3 className="font-heading font-bold text-sm mb-4">
               Последвай ни
             </h3>
-            <div className="flex gap-3">
+            <div className="flex justify-center gap-3 md:justify-start">
               <a
                 href="https://www.instagram.com/little.wonders.gifts/"
                 target="_blank"
@@ -76,13 +76,13 @@ const Footer = () => {
                 <Mail className="w-5 h-5" />
               </a>
             </div>
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="mt-4 text-xs text-muted-foreground">
               hello@littlewondersgifts.com
             </p>
           </div>
         </div>
 
-        <div className="border-t border-border/30 mt-8 pt-6 text-center text-xs text-muted-foreground">
+        <div className="mt-8 border-t border-border/30 pt-6 text-center text-xs text-muted-foreground">
           © {new Date().getFullYear()} Всички права запазени. 💗
         </div>
       </div>
