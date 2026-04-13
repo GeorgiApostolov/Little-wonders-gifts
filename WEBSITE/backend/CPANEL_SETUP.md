@@ -22,7 +22,7 @@ Use these values in cPanel Node.js App:
    - Optional: `MONGODB_DB=littlewondersgifts`
    - Optional: `SERVICES_COLLECTION=services`
    - Optional: `ORDERS_COLLECTION=orders`
-   - Optional: `ORDER_NOTIFICATION_EMAIL=info@littlewondersgifts.com`
+   - Optional: `ORDER_NOTIFICATION_EMAIL=maria_magdalena2003@abv.bg`
    - Required for email notifications:
      - `SMTP_HOST=smtp.your-provider.com`
      - `SMTP_PORT=587`

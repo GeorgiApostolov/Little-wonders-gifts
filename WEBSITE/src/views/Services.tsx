@@ -205,41 +205,13 @@ const plannedImageBySlug: Record<string, string> = {
   "letter-blocks": "/images/services/kubcheta.jpg",
 };
 
-const placeholderPaletteBySlug: Record<string, { from: string; to: string }> = {
-  "pacifier-clips": { from: "#FFE4F1", to: "#DDEEFF" },
-  "photo-frame": { from: "#FFF3D9", to: "#F5E8FF" },
-  platform: { from: "#E3F7EE", to: "#DCEBFF" },
-  "round-platform": { from: "#FDE9E9", to: "#E4F4FF" },
-  "letter-blocks": { from: "#F4F0FF", to: "#FFEEDB" },
-};
-
-const createServicePlaceholder = (slug?: string) => {
-  const palette =
-    (slug && placeholderPaletteBySlug[slug]) ||
-    ({ from: "#EAF4FF", to: "#FFEAF2" } as const);
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" fill="none">
-      <defs>
-        <linearGradient id="serviceGradient" x1="0" y1="0" x2="1200" y2="900" gradientUnits="userSpaceOnUse">
-          <stop stop-color="${palette.from}" />
-          <stop offset="1" stop-color="${palette.to}" />
-        </linearGradient>
-      </defs>
-      <rect width="1200" height="900" rx="42" fill="url(#serviceGradient)" />
-      <circle cx="1010" cy="120" r="110" fill="white" fill-opacity="0.32" />
-      <circle cx="200" cy="760" r="160" fill="white" fill-opacity="0.26" />
-      <rect x="110" y="640" width="980" height="150" rx="30" fill="white" fill-opacity="0.72" />
-      <text x="160" y="730" fill="#55606F" font-size="34" font-family="system-ui, -apple-system, sans-serif">Добави твоя снимка в /public/images/services</text>
-    </svg>
-  `;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-};
-
 const Services = () => {
   const cachedServices = useMemo(() => readCachedServices(), []);
   const [serviceCards, setServiceCards] = useState<ServiceItem[]>(
     () => cachedServices || fallbackServiceCards,
+  );
+  const [hiddenImageKeys, setHiddenImageKeys] = useState<Set<string>>(
+    () => new Set(),
   );
   const [isLoading, setIsLoading] = useState(!cachedServices);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -273,7 +245,9 @@ const Services = () => {
           );
         }
 
-        const services = Array.isArray(payload.services) ? payload.services : [];
+        const services = Array.isArray(payload.services)
+          ? payload.services
+          : [];
         const normalizedServices = sanitizeServices(services);
 
         if (isMounted) {
@@ -283,9 +257,8 @@ const Services = () => {
               : fallbackServiceCards;
 
           persistServicesCache(resolvedServices);
-          setServiceCards(
-            resolvedServices,
-          );
+          setHiddenImageKeys(new Set());
+          setServiceCards(resolvedServices);
           setFetchError(null);
         }
       } catch (error) {
@@ -335,10 +308,10 @@ const Services = () => {
   return (
     <main>
       {/* Services */}
-      <section className="bg-baby-blue-light/50 py-16 md:py-24">
+      <section className="bg-baby-blue-light/50 py-14 sm:py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center">
-            <h1 className="mb-4 font-heading text-3xl font-extrabold md:text-5xl">
+            <h1 className="mb-4 font-heading text-3xl font-extrabold sm:text-4xl md:text-5xl">
               Нашите <span className="text-primary">услуги</span> 🎨
             </h1>
             <p className="mx-auto max-w-xl text-muted-foreground">
@@ -368,46 +341,55 @@ const Services = () => {
               const serviceMeta = getServiceCatalogMeta(slug);
               const title = serviceMeta?.title || service.title;
               const priceLabel = service.priceLabel || serviceMeta?.priceLabel;
-              const placeholderImage = createServicePlaceholder(slug);
+              const imageKey = slug || service.title;
               const imageSrc =
                 (slug ? plannedImageBySlug[slug] || "" : "") ||
-                (typeof service.image === "string" && service.image.trim()) ||
-                placeholderImage;
+                (typeof service.image === "string" ? service.image.trim() : "");
+              const shouldShowImage =
+                imageSrc.length > 0 && !hiddenImageKeys.has(imageKey);
 
               return (
                 <div
-                  key={slug || service.title}
+                  key={imageKey}
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
                 >
-                  <div className="relative aspect-[5/4] overflow-hidden bg-muted">
-                    <img
-                      src={imageSrc}
-                      alt={`Снимка за ${title}`}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      onError={(event) => {
-                        const img = event.currentTarget;
-                        img.onerror = null;
-                        img.src = placeholderImage;
-                      }}
-                    />
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
-                    {priceLabel ? (
-                      <div className="absolute left-4 top-4 rounded-2xl bg-primary px-3 py-2 text-primary-foreground shadow-sm">
-                        <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] opacity-80">
-                          Цена
-                        </span>
-                        <span className="font-heading text-sm font-extrabold">
-                          {priceLabel}
-                        </span>
-                      </div>
-                    ) : null}
-                    <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 shadow-sm backdrop-blur">
-                      <Icon className="h-5 w-5 text-foreground" />
-                    </div>
-                  </div>
+                  {shouldShowImage ? (
+                    <div className="relative h-56 overflow-hidden bg-muted/40 p-2.5 sm:h-64 sm:p-3 md:h-72">
+                      <img
+                        src={imageSrc}
+                        alt={`Снимка за ${title}`}
+                        loading="lazy"
+                        className="h-full w-full rounded-2xl object-contain transition-transform duration-500 group-hover:scale-[1.02]"
+                        onError={() => {
+                          setHiddenImageKeys((currentKeys) => {
+                            if (currentKeys.has(imageKey)) {
+                              return currentKeys;
+                            }
 
-                  <div className="flex flex-1 flex-col gap-4 p-6 md:p-7">
+                            const nextKeys = new Set(currentKeys);
+                            nextKeys.add(imageKey);
+                            return nextKeys;
+                          });
+                        }}
+                      />
+                      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
+                      {priceLabel ? (
+                        <div className="absolute left-4 top-4 rounded-2xl bg-primary px-3 py-2 text-primary-foreground shadow-sm">
+                          <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] opacity-80">
+                            Цена
+                          </span>
+                          <span className="font-heading text-sm font-extrabold">
+                            {priceLabel}
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 shadow-sm backdrop-blur">
+                        <Icon className="h-5 w-5 text-foreground" />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-1 flex-col gap-4 p-5 sm:p-6 md:p-7">
                     <h2 className="font-heading text-xl font-bold leading-tight">
                       {title}
                     </h2>
@@ -436,7 +418,7 @@ const Services = () => {
       </section>
 
       {/* Service Info */}
-      <section className="bg-background py-16 md:py-24">
+      <section className="bg-background py-14 sm:py-16 md:py-24">
         <div className="container mx-auto max-w-5xl px-4">
           <h2 className="mb-10 text-center font-heading text-3xl font-extrabold md:text-4xl">
             Полезна <span className="text-primary">информация</span> ℹ️
@@ -463,8 +445,8 @@ const Services = () => {
                 Цени и цветове
               </h3>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Цените са за показаните стандартни варианти. За различна
-                цветова комбинация се прави запитване.
+                Цените са за показаните стандартни варианти. За различна цветова
+                комбинация се прави запитване.
               </p>
             </div>
 

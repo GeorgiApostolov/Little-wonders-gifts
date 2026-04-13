@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   customColorInquiryText as defaultCustomColorInquiryText,
@@ -60,7 +60,21 @@ const fallbackServiceDetailsBySlug: Record<string, ServiceDetails> = {
 
 type ClipAudience = "girl" | "boy";
 type ClipDecoration = "flower" | "bow";
-type ClipShape = "heart" | "bird" | "star" | "cat" | "round";
+type ClipShape = "heart" | "bear" | "star" | "cat" | "round";
+type DeliveryCourier = "econt" | "speedy";
+type DeliveryType = "address" | "office";
+
+type DeliveryOfficeSuggestion = {
+  id: string;
+  officeId?: string;
+  code?: string;
+  name?: string;
+  city?: string;
+  address?: string;
+  courier?: DeliveryCourier;
+  type?: string;
+  label: string;
+};
 
 type ClipOption = {
   id: string;
@@ -189,7 +203,7 @@ const clipOptions: ClipOption[] = [
 
 const clipShapeOptions: ClipShapeOption[] = [
   { id: "heart", label: "Сърце" },
-  { id: "bird", label: "Птиче" },
+  { id: "bear", label: "Мече" },
   { id: "star", label: "Звезда" },
   { id: "cat", label: "Коте" },
   { id: "round", label: "Кръгла" },
@@ -419,9 +433,7 @@ const platformOptions: PlatformOption[] = platformColorPresets.map(
 );
 
 const getPreviewLetters = (value: string, maxLetters = 5) => {
-  const cleaned = value
-    .toLocaleUpperCase("bg-BG")
-    .replace(/[^A-ZА-Я0-9]/g, "");
+  const cleaned = value.toLocaleUpperCase("bg-BG").replace(/[^A-ZА-Я0-9]/g, "");
   const fallback = "ИМЕ";
   if (!cleaned) {
     return fallback.slice(0, maxLetters);
@@ -557,11 +569,12 @@ const renderClipShape = (shape: ClipShape) => {
     `;
   }
 
-  if (shape === "bird") {
+  if (shape === "bear") {
     return `
-      <path d="M470 120c0-25 19-42 42-42c13 0 24 5 32 13l13 1l-8 12c3 5 5 10 5 16c0 24-18 42-43 42c-7 0-15-2-21-5l-18 9l5-17c-5-8-7-18-7-29z" fill="${woodFill}" stroke="${woodStroke}" stroke-width="2"/>
-      <circle cx="522" cy="106" r="3.5" fill="#7A5D49"/>
-      <path d="M548 111l12 6l-12 6z" fill="#D89A5F"/>
+      <circle cx="470" cy="92" r="16" fill="#7A5D49"/>
+      <circle cx="530" cy="92" r="16" fill="#7A5D49"/>
+      <rect x="446" y="94" width="108" height="92" rx="44" fill="#7A5D49"/>
+      <ellipse cx="500" cy="146" rx="20" ry="14" fill="#E9DDCC"/>
     `;
   }
 
@@ -819,7 +832,10 @@ const getRoundPlatformPreviewDataUri = (
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-const getPlatformPreviewDataUri = (option: PlatformOption, babyName: string) => {
+const getPlatformPreviewDataUri = (
+  option: PlatformOption,
+  babyName: string,
+) => {
   const baseColor = option.colors[0] || "#E5E7EB";
   const secondaryColor = option.colors[1] || "#FFFFFF";
   const accentColor = option.colors[2] || secondaryColor;
@@ -889,10 +905,10 @@ const CustomColorInquiryNote = () => (
   <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4 text-sm leading-relaxed text-amber-900">
     За различна комбинация от цветове се прави запитване. Пиши ни на{" "}
     <a
-      href="mailto:hello@littlewondersgifts.com"
+      href="mailto:maria_magdalena2003@abv.bg"
       className="font-semibold underline decoration-amber-500/70 underline-offset-2"
     >
-      hello@littlewondersgifts.com
+      maria_magdalena2003@abv.bg
     </a>{" "}
     или през{" "}
     <Link
@@ -901,13 +917,15 @@ const CustomColorInquiryNote = () => (
     >
       страницата за контакт
     </Link>
-    . Разполагаме и с други нюанси и можем да обсъдим напълно персонална
-    цветова комбинация.
+    . Разполагаме и с други нюанси и можем да обсъдим напълно персонална цветова
+    комбинация.
   </div>
 );
 
 export default function ServiceDetails() {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
+  const redirectTimeoutRef = useRef<number | null>(null);
   const [slug, setSlug] = useState("");
   const [service, setService] = useState<ServiceDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -941,15 +959,30 @@ export default function ServiceDetails() {
     useState<string>(roundPlatformOptions[0].id);
   const [selectedPlatformAudience, setSelectedPlatformAudience] =
     useState<ClipAudience>("girl");
-  const [selectedPlatformOptionId, setSelectedPlatformOptionId] = useState<string>(
-    platformOptions[0].id,
-  );
+  const [selectedPlatformOptionId, setSelectedPlatformOptionId] =
+    useState<string>(platformOptions[0].id);
   const [babyName, setBabyName] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [deliveryCourier, setDeliveryCourier] =
+    useState<DeliveryCourier>("econt");
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("address");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [officeQuery, setOfficeQuery] = useState("");
+  const [selectedOffice, setSelectedOffice] =
+    useState<DeliveryOfficeSuggestion | null>(null);
+  const [officeSuggestions, setOfficeSuggestions] = useState<
+    DeliveryOfficeSuggestion[]
+  >([]);
+  const [isLoadingOffices, setIsLoadingOffices] = useState(false);
+  const [officeSearchError, setOfficeSearchError] = useState<string | null>(
+    null,
+  );
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
 
   const backendBaseUrl = useMemo(() => {
     const configured = import.meta.env.VITE_BACKEND_BASE_URL;
@@ -982,8 +1015,7 @@ export default function ServiceDetails() {
           `${backendBaseUrl}/services/${encodeURIComponent(slug)}`,
         );
 
-        const responseContentType =
-          response.headers.get("content-type") || "";
+        const responseContentType = response.headers.get("content-type") || "";
         const payload = responseContentType.includes("application/json")
           ? await response.json()
           : null;
@@ -1075,22 +1107,31 @@ export default function ServiceDetails() {
 
   const blockOptionsForAudience = useMemo(
     () =>
-      blockOptions.filter((option) => option.audience === selectedBlocksAudience),
+      blockOptions.filter(
+        (option) => option.audience === selectedBlocksAudience,
+      ),
     [selectedBlocksAudience],
   );
 
   const selectedBlockOption = useMemo(
-    () => blockOptions.find((option) => option.id === selectedBlockOptionId) || null,
+    () =>
+      blockOptions.find((option) => option.id === selectedBlockOptionId) ||
+      null,
     [selectedBlockOptionId],
   );
 
   const frameOptionsForAudience = useMemo(
-    () => frameOptions.filter((option) => option.audience === selectedFrameAudience),
+    () =>
+      frameOptions.filter(
+        (option) => option.audience === selectedFrameAudience,
+      ),
     [selectedFrameAudience],
   );
 
   const selectedFrameOption = useMemo(
-    () => frameOptions.find((option) => option.id === selectedFrameOptionId) || null,
+    () =>
+      frameOptions.find((option) => option.id === selectedFrameOptionId) ||
+      null,
     [selectedFrameOptionId],
   );
 
@@ -1112,14 +1153,17 @@ export default function ServiceDetails() {
 
   const platformOptionsForAudience = useMemo(
     () =>
-      platformOptions.filter((option) => option.audience === selectedPlatformAudience),
+      platformOptions.filter(
+        (option) => option.audience === selectedPlatformAudience,
+      ),
     [selectedPlatformAudience],
   );
 
   const selectedPlatformOption = useMemo(
     () =>
-      platformOptions.find((option) => option.id === selectedPlatformOptionId) ||
-      null,
+      platformOptions.find(
+        (option) => option.id === selectedPlatformOptionId,
+      ) || null,
     [selectedPlatformOptionId],
   );
 
@@ -1160,7 +1204,10 @@ export default function ServiceDetails() {
       return "";
     }
 
-    return getRoundPlatformPreviewDataUri(selectedRoundPlatformOption, babyName);
+    return getRoundPlatformPreviewDataUri(
+      selectedRoundPlatformOption,
+      babyName,
+    );
   }, [selectedRoundPlatformOption, babyName]);
 
   const platformPreviewImage = useMemo(() => {
@@ -1183,7 +1230,10 @@ export default function ServiceDetails() {
       return;
     }
 
-    if (!selectedDecoration || !allowedDecorations.includes(selectedDecoration)) {
+    if (
+      !selectedDecoration ||
+      !allowedDecorations.includes(selectedDecoration)
+    ) {
       setSelectedDecoration(allowedDecorations[0]);
     }
   }, [selectedClipOption, selectedDecoration]);
@@ -1269,7 +1319,104 @@ export default function ServiceDetails() {
     setCustomerEmail((current) => current || user.email || "");
   }, [user]);
 
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current !== null) {
+        window.clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setSelectedOffice(null);
+    setOfficeSuggestions([]);
+    setOfficeSearchError(null);
+    setOfficeQuery("");
+  }, [deliveryCourier]);
+
+  useEffect(() => {
+    if (deliveryType !== "office") {
+      setOfficeSuggestions([]);
+      setOfficeSearchError(null);
+      return;
+    }
+
+    const trimmedQuery = officeQuery.trim();
+    if (trimmedQuery.length < 2) {
+      setOfficeSuggestions([]);
+      setOfficeSearchError(null);
+      return;
+    }
+
+    if (selectedOffice && trimmedQuery === selectedOffice.label) {
+      setOfficeSuggestions([]);
+      setOfficeSearchError(null);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsLoadingOffices(true);
+    setOfficeSearchError(null);
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `${backendBaseUrl}/delivery/offices?courier=${deliveryCourier}&q=${encodeURIComponent(trimmedQuery)}&limit=14`,
+        );
+        const payload = (await response.json()) as {
+          status?: string;
+          message?: string;
+          offices?: DeliveryOfficeSuggestion[];
+        };
+
+        if (!response.ok || payload.status !== "ok") {
+          throw new Error(
+            payload.message || "Неуспешно зареждане на офиси за доставка.",
+          );
+        }
+
+        if (isCancelled) {
+          return;
+        }
+
+        setOfficeSuggestions(
+          Array.isArray(payload.offices) ? payload.offices : [],
+        );
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+
+        setOfficeSuggestions([]);
+        setOfficeSearchError(
+          error instanceof Error ? error.message : "Неуспешно търсене на офис.",
+        );
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingOffices(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+      setIsLoadingOffices(false);
+    };
+  }, [
+    backendBaseUrl,
+    deliveryCourier,
+    deliveryType,
+    officeQuery,
+    selectedOffice,
+  ]);
+
   const submitOrder = async () => {
+    if (redirectTimeoutRef.current !== null) {
+      window.clearTimeout(redirectTimeoutRef.current);
+      redirectTimeoutRef.current = null;
+    }
+
     if (
       !service ||
       (slug !== "pacifier-clips" &&
@@ -1330,6 +1477,48 @@ export default function ServiceDetails() {
           : "Панделка";
     const selectedClipLabelForOrder =
       slug === "pacifier-clips" ? selectedClipShapeOption?.label : undefined;
+    const trimmedCustomerName = customerName.trim();
+    const trimmedCustomerPhone = customerPhone.trim();
+    const trimmedCustomerEmail = customerEmail.trim();
+    const trimmedDeliveryAddress = deliveryAddress.trim();
+    const phoneDigits = trimmedCustomerPhone.replace(/[^\d]/g, "");
+    const selectedOfficeLabel = selectedOffice?.label || "";
+
+    if (!trimmedCustomerName) {
+      setOrderError("Моля, въведете име за доставка.");
+      setOrderMessage(null);
+      return;
+    }
+
+    if (
+      !trimmedCustomerPhone ||
+      phoneDigits.length < 8 ||
+      phoneDigits.length > 15
+    ) {
+      setOrderError("Моля, въведете валиден телефон за доставка.");
+      setOrderMessage(null);
+      return;
+    }
+
+    if (deliveryType === "address" && !trimmedDeliveryAddress) {
+      setOrderError("Моля, въведете адрес за доставка.");
+      setOrderMessage(null);
+      return;
+    }
+
+    if (deliveryType === "office" && !selectedOfficeLabel) {
+      setOrderError("Моля, изберете офис за доставка.");
+      setOrderMessage(null);
+      return;
+    }
+
+    if (!acceptedLegalTerms) {
+      setOrderError(
+        "Моля, потвърди, че си съгласен/съгласна с Общите условия и Политиката за поверителност.",
+      );
+      setOrderMessage(null);
+      return;
+    }
 
     setIsSubmittingOrder(true);
     setOrderError(null);
@@ -1361,8 +1550,24 @@ export default function ServiceDetails() {
           frameBaseStyle:
             slug === "photo-frame" ? selectedFrameBaseStyle : undefined,
           babyName: trimmedBabyName,
-          customerName: customerName.trim(),
-          customerEmail: customerEmail.trim(),
+          customerName: trimmedCustomerName,
+          customerPhone: trimmedCustomerPhone,
+          customerEmail: trimmedCustomerEmail,
+          deliveryCourier,
+          deliveryType,
+          deliveryAddress:
+            deliveryType === "address" ? trimmedDeliveryAddress : "",
+          deliveryOfficeId:
+            deliveryType === "office"
+              ? selectedOffice?.officeId || selectedOffice?.id || ""
+              : "",
+          deliveryOfficeLabel:
+            deliveryType === "office"
+              ? selectedOfficeLabel || officeQuery.trim()
+              : "",
+          deliveryOfficeAddress:
+            deliveryType === "office" ? selectedOffice?.address || "" : "",
+          paymentMethod: "cod",
         }),
       });
 
@@ -1384,16 +1589,24 @@ export default function ServiceDetails() {
 
       const emailNotice = payload.email?.skipped
         ? ` Имейлът още не е активен (${payload.email.reason || "липсва SMTP конфигурация"}).`
-        : payload.email?.sentCustomer === false && customerEmail.trim()
+        : payload.email?.sentCustomer === false && trimmedCustomerEmail
           ? ` Поръчката е приета, но не успяхме да пратим имейл към клиента (${payload.email.reason || "провери SMTP настройките"}).`
           : "";
 
       setOrderMessage(
-        `Поръчката е изпратена успешно${payload.orderId ? ` (ID: ${payload.orderId})` : ""}.${emailNotice}`,
+        `Всичко е успешно! Благодарим за доверието. Поръчката е приета${payload.orderId ? ` (ID: ${payload.orderId})` : ""}.${emailNotice} Пренасочваме към началната страница...`,
       );
       setOrderError(null);
-      setCustomerName("");
-      setCustomerEmail("");
+      setBabyName("");
+      setDeliveryAddress("");
+      setOfficeQuery("");
+      setSelectedOffice(null);
+      setOfficeSuggestions([]);
+      setOfficeSearchError(null);
+      setAcceptedLegalTerms(false);
+      redirectTimeoutRef.current = window.setTimeout(() => {
+        navigate("/", { replace: true });
+      }, 1700);
     } catch (submitError) {
       setOrderError(
         submitError instanceof Error
@@ -1406,13 +1619,219 @@ export default function ServiceDetails() {
     }
   };
 
+  const renderCustomerFields = (nameFieldId: string, emailFieldId: string) => (
+    <>
+      <div className="grid gap-3 mb-5">
+        <label htmlFor={nameFieldId} className="text-sm font-heading font-bold">
+          Твоето име за доставка *
+        </label>
+        <input
+          id={nameFieldId}
+          type="text"
+          value={customerName}
+          onChange={(event) => setCustomerName(event.target.value)}
+          placeholder="Пример: Мария Петрова"
+          maxLength={80}
+          className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
+
+      <div className="grid gap-3 mb-5">
+        <label
+          htmlFor={emailFieldId}
+          className="text-sm font-heading font-bold"
+        >
+          Имейл за потвърждение (по желание)
+        </label>
+        <input
+          id={emailFieldId}
+          type="email"
+          value={customerEmail}
+          onChange={(event) => setCustomerEmail(event.target.value)}
+          placeholder="example@email.com"
+          maxLength={160}
+          className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
+    </>
+  );
+
+  const renderDeliveryFields = (prefix: string) => (
+    <>
+      <div className="grid gap-3 mb-5">
+        <label
+          htmlFor={`${prefix}-customer-phone`}
+          className="text-sm font-heading font-bold"
+        >
+          Телефон за доставка *
+        </label>
+        <input
+          id={`${prefix}-customer-phone`}
+          type="tel"
+          value={customerPhone}
+          onChange={(event) => setCustomerPhone(event.target.value)}
+          placeholder="Пример: 0888123456"
+          maxLength={20}
+          className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </div>
+
+      <div className="grid gap-3 mb-5">
+        <p className="text-sm font-heading font-bold">Куриер *</p>
+        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setDeliveryCourier("econt")}
+            className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
+              deliveryCourier === "econt"
+                ? "border-primary bg-primary/10"
+                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+            }`}
+          >
+            Еконт
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeliveryCourier("speedy")}
+            className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
+              deliveryCourier === "speedy"
+                ? "border-primary bg-primary/10"
+                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+            }`}
+          >
+            Спиди
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 mb-5">
+        <p className="text-sm font-heading font-bold">Тип доставка *</p>
+        <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setDeliveryType("address")}
+            className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
+              deliveryType === "address"
+                ? "border-primary bg-primary/10"
+                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+            }`}
+          >
+            До адрес
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeliveryType("office")}
+            className={`rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
+              deliveryType === "office"
+                ? "border-primary bg-primary/10"
+                : "border-border/60 hover:border-primary/60 hover:bg-muted"
+            }`}
+          >
+            До офис
+          </button>
+        </div>
+      </div>
+
+      {deliveryType === "address" ? (
+        <div className="grid gap-3 mb-5">
+          <label
+            htmlFor={`${prefix}-delivery-address`}
+            className="text-sm font-heading font-bold"
+          >
+            Адрес за доставка *
+          </label>
+          <input
+            id={`${prefix}-delivery-address`}
+            type="text"
+            value={deliveryAddress}
+            onChange={(event) => setDeliveryAddress(event.target.value)}
+            placeholder="Град, квартал, улица, номер"
+            maxLength={220}
+            className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </div>
+      ) : (
+        <div className="grid gap-3 mb-5">
+          <label
+            htmlFor={`${prefix}-delivery-office`}
+            className="text-sm font-heading font-bold"
+          >
+            Избери офис *
+          </label>
+          <input
+            id={`${prefix}-delivery-office`}
+            type="text"
+            value={officeQuery}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setOfficeQuery(nextValue);
+              if (selectedOffice && nextValue !== selectedOffice.label) {
+                setSelectedOffice(null);
+              }
+            }}
+            placeholder={`Напиши офис на ${
+              deliveryCourier === "econt" ? "Еконт" : "Спиди"
+            }...`}
+            maxLength={220}
+            autoComplete="off"
+            className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+
+          {isLoadingOffices ? (
+            <p className="text-xs text-muted-foreground">Търсим офиси...</p>
+          ) : null}
+
+          {officeSuggestions.length > 0 ? (
+            <div className="max-h-60 overflow-y-auto rounded-xl border border-border/60 bg-background">
+              {officeSuggestions.map((office) => (
+                <button
+                  key={office.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedOffice(office);
+                    setOfficeQuery(office.label);
+                    setOfficeSuggestions([]);
+                    setOfficeSearchError(null);
+                  }}
+                  className="w-full border-b border-border/40 px-4 py-3 text-left text-sm transition-colors last:border-b-0 hover:bg-muted"
+                >
+                  {office.label}
+                  {office.address ? (
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {office.address}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {selectedOffice ? (
+            <p className="text-xs text-emerald-700">
+              Избран офис: {selectedOffice.label}
+            </p>
+          ) : null}
+
+          {officeSearchError ? (
+            <p className="text-xs text-red-600">{officeSearchError}</p>
+          ) : null}
+        </div>
+      )}
+
+      <div className="mb-5 rounded-xl border border-border/60 bg-muted/40 px-4 py-3 text-sm">
+        <p className="font-heading font-bold">Начин на плащане</p>
+        <p className="text-muted-foreground">Наложен платеж</p>
+      </div>
+    </>
+  );
+
   return (
     <main>
-      <section className="py-16 md:py-24 bg-baby-blue-light/50">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <div className="bg-card border border-border/50 rounded-3xl p-8 md:p-12 shadow-sm">
+      <section className="bg-baby-blue-light/50 py-12 sm:py-16 md:py-24">
+        <div className="container mx-auto max-w-4xl px-4">
+          <div className="rounded-3xl border border-border/50 bg-card p-5 shadow-sm sm:p-7 md:p-12">
             <p className="text-sm text-muted-foreground mb-4">Услуга</p>
-            <h1 className="font-heading font-extrabold text-3xl md:text-5xl mb-4">
+            <h1 className="mb-4 font-heading text-3xl font-extrabold sm:text-4xl md:text-5xl">
               {heading}
             </h1>
 
@@ -1560,7 +1979,7 @@ export default function ServiceDetails() {
                           ? "4) Избери щипка"
                           : "3) Избери щипка"}
                       </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 md:grid-cols-3">
                         {clipShapeOptions.map((clipShape) => (
                           <button
                             key={clipShape.id}
@@ -1604,8 +2023,8 @@ export default function ServiceDetails() {
                         className="text-sm font-heading font-bold"
                       >
                         {selectedClipOption?.decorations?.length
-                          ? "6) Твоето име (по желание)"
-                          : "5) Твоето име (по желание)"}
+                          ? "6) Твоето име за доставка *"
+                          : "5) Твоето име за доставка *"}
                       </label>
                       <input
                         id="customer-name"
@@ -1642,37 +2061,7 @@ export default function ServiceDetails() {
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={submitOrder}
-                      disabled={isSubmittingOrder}
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {isSubmittingOrder
-                        ? "Изпращаме поръчката..."
-                        : "Изпрати поръчка"}
-                    </button>
-
-                    {orderMessage ? (
-                      <p className="mt-3 text-sm text-green-700">
-                        {orderMessage}
-                      </p>
-                    ) : null}
-
-                    {orderError ? (
-                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
-                    ) : null}
-
-                    <p className="text-xs text-muted-foreground">
-                      Избрано: {selectedClipOption?.title}
-                      {selectedClipShapeOption
-                        ? ` | Щипка: ${selectedClipShapeOption.label}`
-                        : ""}
-                      {selectedDecoration
-                        ? ` | Елемент: ${selectedDecoration === "flower" ? "цвете" : "панделка"}`
-                        : ""}
-                      {babyName.trim() ? ` | Име: ${babyName.trim()}` : ""}
-                    </p>
+                    {renderDeliveryFields("pacifier")}
                   </div>
                 ) : null}
 
@@ -1776,7 +2165,7 @@ export default function ServiceDetails() {
                         htmlFor="customer-name-blocks"
                         className="text-sm font-heading font-bold"
                       >
-                        4) Твоето име (по желание)
+                        4) Твоето име за доставка *
                       </label>
                       <input
                         id="customer-name-blocks"
@@ -1811,31 +2200,7 @@ export default function ServiceDetails() {
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={submitOrder}
-                      disabled={isSubmittingOrder}
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {isSubmittingOrder
-                        ? "Изпращаме поръчката..."
-                        : "Изпрати поръчка"}
-                    </button>
-
-                    {orderMessage ? (
-                      <p className="mt-3 text-sm text-green-700">
-                        {orderMessage}
-                      </p>
-                    ) : null}
-
-                    {orderError ? (
-                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
-                    ) : null}
-
-                    <p className="text-xs text-muted-foreground">
-                      Избрано: {selectedBlockOption?.title}
-                      {babyName.trim() ? ` | Име: ${babyName.trim()}` : ""}
-                    </p>
+                    {renderDeliveryFields("blocks")}
                   </div>
                 ) : null}
 
@@ -1969,7 +2334,7 @@ export default function ServiceDetails() {
                         htmlFor="customer-name-frame"
                         className="text-sm font-heading font-bold"
                       >
-                        5) Твоето име (по желание)
+                        5) Твоето име за доставка *
                       </label>
                       <input
                         id="customer-name-frame"
@@ -2004,32 +2369,7 @@ export default function ServiceDetails() {
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={submitOrder}
-                      disabled={isSubmittingOrder}
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {isSubmittingOrder
-                        ? "Изпращаме поръчката..."
-                        : "Изпрати поръчка"}
-                    </button>
-
-                    {orderMessage ? (
-                      <p className="mt-3 text-sm text-green-700">
-                        {orderMessage}
-                      </p>
-                    ) : null}
-
-                    {orderError ? (
-                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
-                    ) : null}
-
-                    <p className="text-xs text-muted-foreground">
-                      Избрано: {selectedFrameOption?.title}
-                      {` | Основа: ${selectedFrameBaseStyle === "solid" ? "едноцветна" : "пръскана"}`}
-                      {babyName.trim() ? ` | Име: ${babyName.trim()}` : ""}
-                    </p>
+                    {renderDeliveryFields("frame")}
                   </div>
                 ) : null}
 
@@ -2063,7 +2403,9 @@ export default function ServiceDetails() {
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => setSelectedRoundPlatformAudience("girl")}
+                          onClick={() =>
+                            setSelectedRoundPlatformAudience("girl")
+                          }
                           className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                             selectedRoundPlatformAudience === "girl"
                               ? "bg-primary text-primary-foreground"
@@ -2074,7 +2416,9 @@ export default function ServiceDetails() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSelectedRoundPlatformAudience("boy")}
+                          onClick={() =>
+                            setSelectedRoundPlatformAudience("boy")
+                          }
                           className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
                             selectedRoundPlatformAudience === "boy"
                               ? "bg-primary text-primary-foreground"
@@ -2095,7 +2439,9 @@ export default function ServiceDetails() {
                           <button
                             key={option.id}
                             type="button"
-                            onClick={() => setSelectedRoundPlatformOptionId(option.id)}
+                            onClick={() =>
+                              setSelectedRoundPlatformOptionId(option.id)
+                            }
                             className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
                               selectedRoundPlatformOptionId === option.id
                                 ? "border-primary bg-primary/10"
@@ -2128,30 +2474,11 @@ export default function ServiceDetails() {
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={submitOrder}
-                      disabled={isSubmittingOrder}
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {isSubmittingOrder
-                        ? "Изпращаме поръчката..."
-                        : "Изпрати поръчка"}
-                    </button>
-
-                    {orderMessage ? (
-                      <p className="mt-3 text-sm text-green-700">
-                        {orderMessage}
-                      </p>
-                    ) : null}
-
-                    {orderError ? (
-                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
-                    ) : null}
-
-                    <p className="text-xs text-muted-foreground">
-                      Избрано: {selectedRoundPlatformOption?.title}
-                    </p>
+                    {renderCustomerFields(
+                      "customer-name-round-platform",
+                      "customer-email-round-platform",
+                    )}
+                    {renderDeliveryFields("round-platform")}
                   </div>
                 ) : null}
 
@@ -2217,7 +2544,9 @@ export default function ServiceDetails() {
                           <button
                             key={option.id}
                             type="button"
-                            onClick={() => setSelectedPlatformOptionId(option.id)}
+                            onClick={() =>
+                              setSelectedPlatformOptionId(option.id)
+                            }
                             className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
                               selectedPlatformOptionId === option.id
                                 ? "border-primary bg-primary/10"
@@ -2250,49 +2579,67 @@ export default function ServiceDetails() {
                       />
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={submitOrder}
-                      disabled={isSubmittingOrder}
-                      className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      {isSubmittingOrder
-                        ? "Изпращаме поръчката..."
-                        : "Изпрати поръчка"}
-                    </button>
-
-                    {orderMessage ? (
-                      <p className="mt-3 text-sm text-green-700">
-                        {orderMessage}
-                      </p>
-                    ) : null}
-
-                    {orderError ? (
-                      <p className="mt-3 text-sm text-red-600">{orderError}</p>
-                    ) : null}
-
-                    <p className="text-xs text-muted-foreground">
-                      Избрано: {selectedPlatformOption?.title}
-                    </p>
+                    {renderCustomerFields(
+                      "customer-name-platform",
+                      "customer-email-platform",
+                    )}
+                    {renderDeliveryFields("platform")}
                   </div>
                 ) : null}
               </>
             )}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <label className="flex w-full items-start gap-2 rounded-xl border border-border/60 bg-muted/40 px-3 py-2.5 text-sm text-foreground/90">
+                <input
+                  type="checkbox"
+                  checked={acceptedLegalTerms}
+                  onChange={(event) =>
+                    setAcceptedLegalTerms(event.target.checked)
+                  }
+                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <span>
+                  Прочетох и приемам{" "}
+                  <Link
+                    to="/obshti-usloviya"
+                    className="font-semibold text-primary underline underline-offset-2"
+                  >
+                    Общите условия
+                  </Link>{" "}
+                  и{" "}
+                  <Link
+                    to="/poveritelnost"
+                    className="font-semibold text-primary underline underline-offset-2"
+                  >
+                    Политиката за поверителност
+                  </Link>
+                  .
+                </span>
+              </label>
               <Link
                 to="/uslugi"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-sm font-heading font-bold hover:bg-muted transition-all"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-heading font-bold transition-all hover:bg-muted sm:w-auto"
               >
                 ← Назад към услуги
               </Link>
-              <Link
-                to="/kontakti"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-heading font-bold hover:bg-rose-dark transition-all"
+              <button
+                type="button"
+                onClick={submitOrder}
+                disabled={isSubmittingOrder}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-heading font-bold text-primary-foreground transition-all hover:bg-rose-dark disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
               >
-                Пиши ни за поръчка →
-              </Link>
+                {isSubmittingOrder
+                  ? "Изпращаме поръчката..."
+                  : "Изпрати поръчка"}
+              </button>
             </div>
+            {orderMessage ? (
+              <p className="mt-3 text-sm text-green-700">{orderMessage}</p>
+            ) : null}
+            {orderError ? (
+              <p className="mt-3 text-sm text-red-600">{orderError}</p>
+            ) : null}
           </div>
         </div>
       </section>

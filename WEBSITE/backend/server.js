@@ -22,7 +22,7 @@ const adminPassword = process.env.ADMIN_PASSWORD || "1bg2bg3bg";
 const adminJwtSecret =
   process.env.ADMIN_JWT_SECRET || `${authJwtSecret}-admin`;
 const notificationEmail =
-  process.env.ORDER_NOTIFICATION_EMAIL || "info@littlewondersgifts.com";
+  process.env.ORDER_NOTIFICATION_EMAIL || "maria_magdalena2003@abv.bg";
 const smtpHost = process.env.SMTP_HOST || "";
 const smtpPort = Number(process.env.SMTP_PORT) || 587;
 const smtpSecure = String(process.env.SMTP_SECURE || "false") === "true";
@@ -30,6 +30,16 @@ const smtpUser = process.env.SMTP_USER || "";
 const smtpPass = process.env.SMTP_PASS || "";
 const smtpFromEmail = process.env.SMTP_FROM_EMAIL || "";
 const emailTimeoutMs = Number(process.env.EMAIL_TIMEOUT_MS) || 8000;
+const deliveryRequestTimeoutMs =
+  Number(process.env.DELIVERY_REQUEST_TIMEOUT_MS) || 8000;
+const deliveryOfficesCacheTtlMs =
+  Number(process.env.DELIVERY_OFFICES_CACHE_TTL_MS) || 6 * 60 * 60 * 1000;
+const econtOfficesEndpoint =
+  process.env.ECONT_OFFICES_ENDPOINT ||
+  "https://ee.econt.com/services/Nomenclatures/NomenclaturesService.getOffices.json";
+const speedyOfficesMapEndpoint =
+  process.env.SPEEDY_OFFICES_MAP_ENDPOINT ||
+  "https://services.speedy.bg/officesmap_v2/?src=sws";
 const maxPhotoUploadBytes =
   Number(process.env.MAX_PHOTO_UPLOAD_BYTES) || 8 * 1024 * 1024;
 const sofiaTimeZone = "Europe/Sofia";
@@ -154,6 +164,20 @@ const mongoState = {
   message: mongoUri ? "Connecting..." : "MONGODB_URI is not configured",
   lastCheckedAt: null,
 };
+const deliveryOfficesCache = {
+  econt: {
+    savedAt: 0,
+    offices: [],
+  },
+  speedy: {
+    savedAt: 0,
+    offices: [],
+  },
+};
+const deliveryOfficesLoadState = {
+  econt: null,
+  speedy: null,
+};
 
 function normalizeBasePath(path) {
   if (!path) {
@@ -253,6 +277,311 @@ function isValidEmail(value) {
   }
 
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function normalizePhoneNumber(value) {
+  const rawValue = sanitizeText(value, 32);
+  if (!rawValue) {
+    return "";
+  }
+
+  const compactValue = rawValue.replace(/[^\d+]/g, "");
+  const normalized =
+    compactValue.startsWith("+")
+      ? `+${compactValue.slice(1).replace(/\+/g, "")}`
+      : compactValue.replace(/\+/g, "");
+
+  return normalized.slice(0, 20);
+}
+
+function isValidPhoneNumber(value) {
+  return /^\+?\d{8,15}$/.test(value);
+}
+
+function normalizeSearchValue(value) {
+  return String(value || "")
+    .toLocaleLowerCase("bg-BG")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zа-я0-9]+/gi, " ")
+    .trim();
+}
+
+function toDeliveryCourierLabel(value) {
+  if (value === "econt") {
+    return "Еконт";
+  }
+
+  if (value === "speedy") {
+    return "Спиди";
+  }
+
+  return "-";
+}
+
+function toDeliveryTypeLabel(value) {
+  if (value === "office") {
+    return "До офис";
+  }
+
+  if (value === "address") {
+    return "До адрес";
+  }
+
+  return "-";
+}
+
+function toPaymentMethodLabel(value) {
+  if (value === "cod") {
+    return "Наложен платеж";
+  }
+
+  return "-";
+}
+
+function scoreOfficeSearchMatch(office, normalizedQuery) {
+  const normalizedName = normalizeSearchValue(office.name || "");
+  const normalizedCity = normalizeSearchValue(office.city || "");
+  const normalizedAddress = normalizeSearchValue(office.address || "");
+  const searchIndex = office.searchIndex || "";
+
+  let score = 0;
+  if (normalizedName.startsWith(normalizedQuery)) {
+    score += 120;
+  }
+  if (normalizedCity.startsWith(normalizedQuery)) {
+    score += 90;
+  }
+  if (normalizedAddress.startsWith(normalizedQuery)) {
+    score += 60;
+  }
+  if (normalizedName.includes(normalizedQuery)) {
+    score += 50;
+  }
+  if (normalizedCity.includes(normalizedQuery)) {
+    score += 30;
+  }
+  if (searchIndex.includes(normalizedQuery)) {
+    score += 20;
+  }
+
+  return score;
+}
+
+function stripOfficeSearchIndex(office) {
+  const { searchIndex, ...publicOffice } = office;
+  return publicOffice;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = deliveryRequestTimeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchEcontOffices() {
+  const response = await fetchWithTimeout(econtOfficesEndpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      countryCode: "BGR",
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Econt offices request failed (${response.status})`);
+  }
+
+  const payload = await response.json();
+  const offices = Array.isArray(payload?.offices) ? payload.offices : [];
+
+  return offices
+    .map((office) => {
+      const officeId = sanitizeText(String(office?.id || ""), 40);
+      const officeCode = sanitizeText(office?.code, 40);
+      const officeName = sanitizeText(office?.name, 140);
+      const city = sanitizeText(
+        office?.address?.city?.name || office?.address?.siteName || "",
+        80,
+      );
+      const address = sanitizeText(
+        office?.address?.fullAddress ||
+          office?.address?.fullAddressString ||
+          office?.address?.localAddressString ||
+          "",
+        220,
+      );
+
+      if (!officeName) {
+        return null;
+      }
+
+      const labelParts = [officeName];
+      if (city) {
+        labelParts.push(city);
+      }
+
+      return {
+        id: `econt-${officeId || officeCode || officeName}`,
+        officeId,
+        code: officeCode,
+        name: officeName,
+        city,
+        address,
+        courier: "econt",
+        type: office?.isAPS ? "automat" : "office",
+        label: labelParts.join(" • "),
+        searchIndex: normalizeSearchValue(
+          [officeName, city, address, officeCode].filter(Boolean).join(" "),
+        ),
+      };
+    })
+    .filter(Boolean);
+}
+
+function inferSpeedyOfficeCity(officeName) {
+  const normalizedOfficeName = officeName.replace(/\s+\(АВТОМАТ\)$/i, "").trim();
+  const dashIndex = normalizedOfficeName.indexOf(" - ");
+  if (dashIndex > 0) {
+    return normalizedOfficeName.slice(0, dashIndex).trim();
+  }
+
+  const parenthesisIndex = normalizedOfficeName.indexOf(" (");
+  if (parenthesisIndex > 0) {
+    return normalizedOfficeName.slice(0, parenthesisIndex).trim();
+  }
+
+  return normalizedOfficeName;
+}
+
+async function fetchSpeedyOffices() {
+  const response = await fetchWithTimeout(speedyOfficesMapEndpoint, {
+    method: "GET",
+    headers: {
+      Referer: "https://www.speedy.bg/public/bg/speedy-offices-automats",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Speedy offices request failed (${response.status})`);
+  }
+
+  const html = await response.text();
+  const officeRegex =
+    /(\d+)\s*:\s*\{[^{}]*?officeName:\s*'((?:\\'|[^'])*)'[^{}]*?officeType:\s*'((?:\\'|[^'])*)'[^{}]*?\}/g;
+  const offices = [];
+  let match = officeRegex.exec(html);
+
+  while (match) {
+    const officeId = sanitizeText(match[1], 40);
+    const officeName = sanitizeText(match[2].replace(/\\'/g, "'"), 180);
+    const officeTypeRaw = sanitizeText(match[3], 20).toUpperCase();
+    const officeType = officeTypeRaw === "APT" ? "automat" : "office";
+    const city = sanitizeText(inferSpeedyOfficeCity(officeName), 80);
+
+    if (officeId && officeName) {
+      offices.push({
+        id: `speedy-${officeId}`,
+        officeId,
+        code: officeId,
+        name: officeName,
+        city,
+        address: "",
+        courier: "speedy",
+        type: officeType,
+        label:
+          officeType === "automat"
+            ? `${officeName} • Автомат`
+            : `${officeName} • Офис`,
+        searchIndex: normalizeSearchValue([officeName, city].join(" ")),
+      });
+    }
+
+    match = officeRegex.exec(html);
+  }
+
+  if (offices.length === 0) {
+    throw new Error("No Speedy offices found");
+  }
+
+  return offices;
+}
+
+async function loadDeliveryOffices(courier) {
+  const cacheEntry = deliveryOfficesCache[courier];
+  const now = Date.now();
+  const isCacheValid =
+    cacheEntry &&
+    cacheEntry.offices.length > 0 &&
+    now - cacheEntry.savedAt <= deliveryOfficesCacheTtlMs;
+
+  if (isCacheValid) {
+    return cacheEntry.offices;
+  }
+
+  if (deliveryOfficesLoadState[courier]) {
+    return deliveryOfficesLoadState[courier];
+  }
+
+  const loader = courier === "econt" ? fetchEcontOffices : fetchSpeedyOffices;
+  const loadingPromise = loader()
+    .then((offices) => {
+      deliveryOfficesCache[courier] = {
+        savedAt: Date.now(),
+        offices,
+      };
+      return offices;
+    })
+    .finally(() => {
+      deliveryOfficesLoadState[courier] = null;
+    });
+
+  deliveryOfficesLoadState[courier] = loadingPromise;
+  return loadingPromise;
+}
+
+async function searchDeliveryOffices(courier, query, limit = 20) {
+  const offices = await loadDeliveryOffices(courier);
+  const normalizedQuery = normalizeSearchValue(query);
+  const normalizedWords = normalizedQuery.split(/\s+/).filter(Boolean);
+
+  if (normalizedWords.length === 0) {
+    return offices.slice(0, limit).map(stripOfficeSearchIndex);
+  }
+
+  return offices
+    .map((office) => {
+      const searchIndex = office.searchIndex || "";
+      const matchesAllWords = normalizedWords.every((word) =>
+        searchIndex.includes(word),
+      );
+      if (!matchesAllWords) {
+        return null;
+      }
+
+      return {
+        office,
+        score: scoreOfficeSearchMatch(office, normalizedQuery),
+      };
+    })
+    .filter(Boolean)
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.office.label.localeCompare(right.office.label, "bg"),
+    )
+    .slice(0, limit)
+    .map((item) => stripOfficeSearchIndex(item.office));
 }
 
 const galleryCategories = [
@@ -468,6 +797,27 @@ function buildPhotoUrl(publicBasePath, fileName) {
   return `${resolvedBasePath}/photos/${encodeURIComponent(fileName)}`;
 }
 
+function buildDeliverySummary(order) {
+  const courierLabel = toDeliveryCourierLabel(order.deliveryCourier);
+  const deliveryTypeLabel = toDeliveryTypeLabel(order.deliveryType);
+  const locationLabel =
+    order.deliveryType === "office"
+      ? [
+          order.deliveryOfficeLabel || "",
+          order.deliveryOfficeAddress || "",
+          order.deliveryOfficeId ? `ID: ${order.deliveryOfficeId}` : "",
+        ]
+          .filter(Boolean)
+          .join(" | ") || "-"
+      : order.deliveryAddress || "-";
+
+  return {
+    courierLabel,
+    deliveryTypeLabel,
+    locationLabel,
+  };
+}
+
 function getEmailTransporter() {
   if (emailTransporter) {
     return emailTransporter;
@@ -505,6 +855,7 @@ async function sendOrderEmails(order) {
   }
 
   const subjectAdmin = `Нова поръчка: ${order.serviceTitle}`;
+  const deliverySummary = buildDeliverySummary(order);
   const adminText = [
     "Нова поръчка в littlewondersgifts.com",
     `Поръчка ID: ${order.orderId}`,
@@ -519,7 +870,12 @@ async function sendOrderEmails(order) {
       : []),
     `Име на бебето: ${order.babyName || "-"}`,
     `Клиент: ${order.customerName || "-"}`,
+    `Телефон на клиент: ${order.customerPhone || "-"}`,
     `Имейл на клиент: ${order.customerEmail || "-"}`,
+    `Куриер: ${deliverySummary.courierLabel}`,
+    `Тип доставка: ${deliverySummary.deliveryTypeLabel}`,
+    `Данни за доставка: ${deliverySummary.locationLabel}`,
+    `Плащане: ${toPaymentMethodLabel(order.paymentMethod)}`,
     `Създадена на: ${order.createdAt}`,
   ].join("\n");
 
@@ -543,6 +899,7 @@ async function sendOrderEmails(order) {
   }
 
   if (order.customerEmail) {
+    const customerDeliverySummary = buildDeliverySummary(order);
     const customerText = [
       `Здравей, ${order.customerName || "приятелю"}!`,
       "",
@@ -556,6 +913,11 @@ async function sendOrderEmails(order) {
         ? [`Елемент: ${order.selectedDecorationLabel}`]
         : []),
       `Име на бебето: ${order.babyName || "-"}`,
+      `Телефон: ${order.customerPhone || "-"}`,
+      `Куриер: ${customerDeliverySummary.courierLabel}`,
+      `Тип доставка: ${customerDeliverySummary.deliveryTypeLabel}`,
+      `Данни за доставка: ${customerDeliverySummary.locationLabel}`,
+      `Плащане: ${toPaymentMethodLabel(order.paymentMethod)}`,
       "",
       "Ще се свържем с теб възможно най-скоро.",
       "Little Wonders Gifts",
@@ -607,6 +969,7 @@ async function sendOrderStatusEmail(order, nextStatus) {
   const subject = isConfirmed
     ? "Поръчката ти е потвърдена - Little Wonders Gifts"
     : "Поръчката ти пътува към вас - Little Wonders Gifts";
+  const deliverySummary = buildDeliverySummary(order);
   const customerText = [
     `Здравей, ${order.customerName || "приятелю"}!`,
     "",
@@ -622,6 +985,9 @@ async function sendOrderStatusEmail(order, nextStatus) {
       ? [`Елемент: ${order.selectedDecorationLabel}`]
       : []),
     `Име на бебето: ${order.babyName || "-"}`,
+    `Куриер: ${deliverySummary.courierLabel}`,
+    `Тип доставка: ${deliverySummary.deliveryTypeLabel}`,
+    `Данни за доставка: ${deliverySummary.locationLabel}`,
     "",
     isConfirmed
       ? "Ще ти пишем отново, когато поръчката е готова за изпращане."
@@ -645,6 +1011,49 @@ async function sendOrderStatusEmail(order, nextStatus) {
   } catch (error) {
     return {
       sentCustomer: false,
+      skipped: false,
+      reason: error instanceof Error ? error.message : "Unknown email error",
+    };
+  }
+}
+
+async function sendContactInquiryEmail(inquiry) {
+  const transporter = getEmailTransporter();
+  if (!transporter) {
+    return {
+      sentAdmin: false,
+      skipped: true,
+      reason: "SMTP is not configured",
+    };
+  }
+
+  const subject = `Ново запитване: ${inquiry.name || inquiry.email || "Клиент"}`;
+  const text = [
+    "Ново запитване в littlewondersgifts.com",
+    `Получено на: ${inquiry.createdAt}`,
+    `Име: ${inquiry.name || "-"}`,
+    `Имейл: ${inquiry.email || "-"}`,
+    "",
+    "Съобщение:",
+    inquiry.message || "-",
+  ].join("\n");
+
+  try {
+    await transporter.sendMail({
+      from: smtpFromEmail,
+      to: notificationEmail,
+      subject,
+      text,
+      replyTo: inquiry.email || notificationEmail,
+    });
+
+    return {
+      sentAdmin: true,
+      skipped: false,
+    };
+  } catch (error) {
+    return {
+      sentAdmin: false,
       skipped: false,
       reason: error instanceof Error ? error.message : "Unknown email error",
     };
@@ -1320,14 +1729,33 @@ const server = http.createServer(async (req, res) => {
       );
       const babyName = sanitizeText(payload.babyName, 60);
       const customerName = sanitizeText(payload.customerName, 80);
+      const customerPhone = normalizePhoneNumber(payload.customerPhone);
       const customerEmailRaw = sanitizeText(
         payload.customerEmail,
         160,
       ).toLowerCase();
+      const deliveryCourier = sanitizeText(
+        payload.deliveryCourier,
+        20,
+      ).toLowerCase();
+      const deliveryType = sanitizeText(payload.deliveryType, 20).toLowerCase();
+      const deliveryAddress = sanitizeText(payload.deliveryAddress, 220);
+      const deliveryOfficeId = sanitizeText(payload.deliveryOfficeId, 80);
+      const deliveryOfficeLabel = sanitizeText(payload.deliveryOfficeLabel, 220);
+      const deliveryOfficeAddress =
+        typeof payload.deliveryOfficeAddress === "undefined"
+          ? sanitizeText(existingOrder.deliveryOfficeAddress, 240)
+          : sanitizeText(payload.deliveryOfficeAddress, 240);
+      const paymentMethod = "cod";
       const customerEmail =
         customerEmailRaw && !isValidEmail(customerEmailRaw)
           ? null
           : customerEmailRaw;
+      const requiresBabyName = [
+        "pacifier-clips",
+        "letter-blocks",
+        "photo-frame",
+      ].includes(existingOrder.serviceSlug);
 
       if (customerEmail === null) {
         sendJson(res, 400, {
@@ -1337,11 +1765,51 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (!serviceTitle || !selectedOptionLabel || !babyName) {
+      if (customerPhone && !isValidPhoneNumber(customerPhone)) {
+        sendJson(res, 400, {
+          status: "error",
+          message: "Телефонът не е валиден",
+        });
+        return;
+      }
+
+      if (deliveryCourier && deliveryCourier !== "econt" && deliveryCourier !== "speedy") {
+        sendJson(res, 400, {
+          status: "error",
+          message: "Куриерът трябва да е Еконт или Спиди",
+        });
+        return;
+      }
+
+      if (deliveryType && deliveryType !== "address" && deliveryType !== "office") {
+        sendJson(res, 400, {
+          status: "error",
+          message: "Типът доставка трябва да е до адрес или до офис",
+        });
+        return;
+      }
+
+      if (deliveryType === "address" && !deliveryAddress) {
+        sendJson(res, 400, {
+          status: "error",
+          message: "Липсва адрес за доставка",
+        });
+        return;
+      }
+
+      if (deliveryType === "office" && !deliveryOfficeLabel) {
+        sendJson(res, 400, {
+          status: "error",
+          message: "Липсва офис за доставка",
+        });
+        return;
+      }
+
+      if (!serviceTitle || !selectedOptionLabel || (requiresBabyName && !babyName)) {
         sendJson(res, 400, {
           status: "error",
           message:
-            "Услугата, комбинацията и името на бебето са задължителни.",
+            "Услугата и комбинацията са задължителни, а за този продукт е нужно и име на бебето.",
         });
         return;
       }
@@ -1357,7 +1825,16 @@ const server = http.createServer(async (req, res) => {
             selectedDecorationLabel,
             babyName,
             customerName,
+            customerPhone,
             customerEmail: customerEmail || "",
+            deliveryCourier,
+            deliveryType,
+            deliveryAddress: deliveryType === "address" ? deliveryAddress : "",
+            deliveryOfficeId: deliveryType === "office" ? deliveryOfficeId : "",
+            deliveryOfficeLabel: deliveryType === "office" ? deliveryOfficeLabel : "",
+            deliveryOfficeAddress:
+              deliveryType === "office" ? deliveryOfficeAddress : "",
+            paymentMethod,
             updatedAt,
           },
         },
@@ -1599,6 +2076,128 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  if (routePath === "/delivery/offices" && req.method === "GET") {
+    const courier = sanitizeText(url.searchParams.get("courier"), 20).toLowerCase();
+    const query = sanitizeText(url.searchParams.get("q"), 120);
+    const requestedLimit = Number(url.searchParams.get("limit"));
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.round(requestedLimit), 1), 50)
+      : 20;
+
+    if (courier !== "econt" && courier !== "speedy") {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден куриер. Позволени: econt, speedy.",
+      });
+      return;
+    }
+
+    try {
+      const offices = await searchDeliveryOffices(courier, query, limit);
+
+      sendJson(res, 200, {
+        status: "ok",
+        courier,
+        query,
+        count: offices.length,
+        offices,
+      });
+      return;
+    } catch (error) {
+      sendJson(res, 502, {
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Неуспешно зареждане на офисите",
+      });
+      return;
+    }
+  }
+
+  if (routePath === "/contact" && req.method === "POST") {
+    let payload = null;
+
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Невалиден JSON във заявката",
+      });
+      return;
+    }
+
+    const name = sanitizeText(payload.name, 80);
+    const email = sanitizeText(payload.email, 160).toLowerCase();
+    const message = sanitizeText(payload.message, 3000);
+
+    if (!name) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Името е задължително",
+      });
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Моля, въведете валиден имейл",
+      });
+      return;
+    }
+
+    if (!message || message.length < 3) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Съобщението е твърде кратко",
+      });
+      return;
+    }
+
+    let emailResult = null;
+    try {
+      emailResult = await withTimeout(
+        sendContactInquiryEmail({
+          name,
+          email,
+          message,
+          createdAt: getSofiaTimestamp(),
+        }),
+        emailTimeoutMs,
+        "Email sending timeout",
+      );
+    } catch (emailError) {
+      emailResult = {
+        sentAdmin: false,
+        skipped: false,
+        reason:
+          emailError instanceof Error
+            ? emailError.message
+            : "Unknown email error",
+      };
+    }
+
+    if (!emailResult?.sentAdmin) {
+      const isMissingConfiguration = emailResult?.skipped;
+      sendJson(res, isMissingConfiguration ? 503 : 502, {
+        status: "error",
+        message: isMissingConfiguration
+          ? "SMTP не е конфигуриран. Запитването не може да бъде изпратено."
+          : "Неуспешно изпращане на запитването. Моля, опитайте отново.",
+        email: emailResult,
+      });
+      return;
+    }
+
+    sendJson(res, 201, {
+      status: "ok",
+      message: "Запитването е изпратено успешно",
+    });
+    return;
+  }
+
   if (routePath === "/orders" && req.method === "POST") {
     let payload = null;
 
@@ -1627,16 +2226,38 @@ const server = http.createServer(async (req, res) => {
     const frameBaseStyle = sanitizeText(payload.frameBaseStyle, 40);
     const babyName = sanitizeText(payload.babyName, 60);
     const customerName = sanitizeText(payload.customerName, 80);
+    const customerPhone = normalizePhoneNumber(payload.customerPhone);
     const customerEmailRaw = sanitizeText(
       payload.customerEmail,
       160,
     ).toLowerCase();
+    const deliveryCourier = sanitizeText(
+      payload.deliveryCourier,
+      20,
+    ).toLowerCase();
+    const deliveryType = sanitizeText(payload.deliveryType, 20).toLowerCase();
+    const deliveryAddress = sanitizeText(payload.deliveryAddress, 220);
+    const deliveryOfficeId = sanitizeText(payload.deliveryOfficeId, 80);
+    const deliveryOfficeLabel = sanitizeText(payload.deliveryOfficeLabel, 220);
+    const deliveryOfficeAddress = sanitizeText(
+      payload.deliveryOfficeAddress,
+      240,
+    );
+    const paymentMethod = "cod";
     const customerEmail =
       customerEmailRaw && isValidEmail(customerEmailRaw)
         ? customerEmailRaw
         : "";
+    const authUser = decodeAuthUserFromRequest(req);
+    const resolvedCustomerName = customerName || authUser?.fullName || "";
+    const resolvedCustomerEmail = customerEmail || authUser?.email || "";
+    const requiresBabyName = [
+      "pacifier-clips",
+      "letter-blocks",
+      "photo-frame",
+    ].includes(serviceSlug);
 
-    if (!serviceSlug || !serviceTitle || !babyName || !selectedOptionId) {
+    if (!serviceSlug || !serviceTitle || !selectedOptionId) {
       sendJson(res, 400, {
         status: "error",
         message: "Липсват задължителни данни за поръчката",
@@ -1644,11 +2265,64 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (requiresBabyName && !babyName) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Името на бебето е задължително за този продукт",
+      });
+      return;
+    }
+
+    if (!resolvedCustomerName) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Моля, въведете име за доставка",
+      });
+      return;
+    }
+
+    if (!customerPhone || !isValidPhoneNumber(customerPhone)) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Моля, въведете валиден телефон за доставка",
+      });
+      return;
+    }
+
+    if (deliveryCourier !== "econt" && deliveryCourier !== "speedy") {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Моля, изберете валиден куриер (Еконт или Спиди)",
+      });
+      return;
+    }
+
+    if (deliveryType !== "address" && deliveryType !== "office") {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Моля, изберете валиден тип доставка",
+      });
+      return;
+    }
+
+    if (deliveryType === "address" && !deliveryAddress) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Моля, въведете адрес за доставка",
+      });
+      return;
+    }
+
+    if (deliveryType === "office" && !deliveryOfficeLabel) {
+      sendJson(res, 400, {
+        status: "error",
+        message: "Моля, изберете офис за доставка",
+      });
+      return;
+    }
+
     const createdAt = getSofiaTimestamp();
     const orderId = `LWG-${Date.now()}`;
-    const authUser = decodeAuthUserFromRequest(req);
-    const resolvedCustomerName = customerName || authUser?.fullName || "";
-    const resolvedCustomerEmail = customerEmail || authUser?.email || "";
 
     const orderDoc = {
       orderId,
@@ -1664,7 +2338,15 @@ const server = http.createServer(async (req, res) => {
       frameBaseStyle,
       babyName,
       customerName: resolvedCustomerName,
+      customerPhone,
       customerEmail: resolvedCustomerEmail,
+      deliveryCourier,
+      deliveryType,
+      deliveryAddress: deliveryType === "address" ? deliveryAddress : "",
+      deliveryOfficeId: deliveryType === "office" ? deliveryOfficeId : "",
+      deliveryOfficeLabel: deliveryType === "office" ? deliveryOfficeLabel : "",
+      deliveryOfficeAddress: deliveryType === "office" ? deliveryOfficeAddress : "",
+      paymentMethod,
       createdAt,
       status: "new",
       userId: authUser?.userId || null,

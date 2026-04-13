@@ -29,6 +29,9 @@ const Gallery = () => {
   const [categories, setCategories] = useState<string[]>(["Всички"]);
   const [activeCategory, setActiveCategory] = useState("Всички");
   const [lightboxPhotoId, setLightboxPhotoId] = useState<string | null>(null);
+  const [hiddenPhotoIds, setHiddenPhotoIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [galleryError, setGalleryError] = useState<string | null>(null);
 
@@ -61,6 +64,7 @@ const Gallery = () => {
           new Set(nextPhotos.map((photo) => photo.category).filter(Boolean)),
         );
 
+        setHiddenPhotoIds(new Set());
         setPhotos(nextPhotos);
         setCategories([
           "Всички",
@@ -97,14 +101,27 @@ const Gallery = () => {
       ? photos
       : photos.filter((photo) => photo.category === activeCategory);
 
+  const visibleFilteredPhotos = filteredPhotos.filter(
+    (photo) =>
+      typeof photo.imageUrl === "string" &&
+      photo.imageUrl.trim().length > 0 &&
+      !hiddenPhotoIds.has(photo.photoId),
+  );
+
   const activePhoto =
-    photos.find((photo) => photo.photoId === lightboxPhotoId) || null;
+    photos.find(
+      (photo) =>
+        photo.photoId === lightboxPhotoId &&
+        typeof photo.imageUrl === "string" &&
+        photo.imageUrl.trim().length > 0 &&
+        !hiddenPhotoIds.has(photo.photoId),
+    ) || null;
 
   return (
-    <main className="py-12 md:py-20">
+    <main className="py-10 sm:py-12 md:py-20">
       <div className="container mx-auto px-4">
         <div className="mb-10 text-center">
-          <h1 className="mb-4 font-heading text-3xl font-extrabold md:text-5xl">
+          <h1 className="mb-4 font-heading text-3xl font-extrabold sm:text-4xl md:text-5xl">
             Нашата <span className="text-primary">галерия</span> 🖼️
           </h1>
           <p className="mx-auto max-w-xl text-muted-foreground">
@@ -118,7 +135,7 @@ const Gallery = () => {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`rounded-full px-5 py-2 text-sm font-medium transition-all ${
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-all sm:px-5 ${
                 activeCategory === category
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "bg-muted text-muted-foreground hover:bg-accent"
@@ -138,13 +155,13 @@ const Gallery = () => {
           <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-5 text-sm text-red-700">
             {galleryError}
           </div>
-        ) : filteredPhotos.length === 0 ? (
+        ) : visibleFilteredPhotos.length === 0 ? (
           <div className="rounded-3xl border border-border/50 bg-card px-6 py-12 text-center text-sm text-muted-foreground">
             Все още няма качени снимки за тази категория.
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
-            {filteredPhotos.map((photo) => (
+          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 md:grid-cols-3 md:gap-6">
+            {visibleFilteredPhotos.map((photo) => (
               <button
                 key={photo.photoId}
                 onClick={() => setLightboxPhotoId(photo.photoId)}
@@ -157,6 +174,21 @@ const Gallery = () => {
                   alt={photo.alt}
                   loading="lazy"
                   className="aspect-square h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={() => {
+                    setHiddenPhotoIds((currentIds) => {
+                      if (currentIds.has(photo.photoId)) {
+                        return currentIds;
+                      }
+
+                      const nextIds = new Set(currentIds);
+                      nextIds.add(photo.photoId);
+                      return nextIds;
+                    });
+
+                    if (lightboxPhotoId === photo.photoId) {
+                      setLightboxPhotoId(null);
+                    }
+                  }}
                 />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent p-4 text-left text-white">
                   <p className="text-sm font-semibold">{photo.title}</p>
@@ -169,21 +201,33 @@ const Gallery = () => {
 
         {activePhoto ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/70 p-3 backdrop-blur-sm sm:p-4"
             onClick={() => setLightboxPhotoId(null)}
           >
             <div
-              className="relative w-full max-w-4xl overflow-hidden rounded-3xl bg-card shadow-2xl"
+              className="relative w-full max-w-4xl overflow-hidden rounded-2xl bg-card shadow-2xl sm:rounded-3xl"
               onClick={(event) => event.stopPropagation()}
             >
               <img
                 src={activePhoto.imageUrl}
                 alt={activePhoto.alt}
-                className="max-h-[85vh] w-full object-contain bg-black/5"
+                className="max-h-[78svh] w-full object-contain bg-black/5 sm:max-h-[85vh]"
+                onError={() => {
+                  setHiddenPhotoIds((currentIds) => {
+                    if (currentIds.has(activePhoto.photoId)) {
+                      return currentIds;
+                    }
+
+                    const nextIds = new Set(currentIds);
+                    nextIds.add(activePhoto.photoId);
+                    return nextIds;
+                  });
+                  setLightboxPhotoId(null);
+                }}
               />
-              <div className="flex items-center justify-between gap-3 border-t border-border/50 px-5 py-4">
+              <div className="flex flex-col items-start gap-3 border-t border-border/50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
-                  <p className="font-heading text-lg font-extrabold">
+                  <p className="font-heading text-base font-extrabold sm:text-lg">
                     {activePhoto.title}
                   </p>
                   <p className="text-sm text-muted-foreground">
@@ -193,7 +237,7 @@ const Gallery = () => {
 
                 <button
                   onClick={() => setLightboxPhotoId(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-primary hover:text-primary-foreground"
+                  className="self-end flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-primary hover:text-primary-foreground sm:self-auto"
                   aria-label="Затвори"
                   type="button"
                 >
@@ -204,7 +248,7 @@ const Gallery = () => {
           </div>
         ) : null}
 
-        <div className="mx-auto mt-16 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        <div className="mx-auto mt-12 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:mt-16">
           <p>
             Тук ще откриеш реални снимки на ръчно изработените ни подаръци.
             Галерията се обновява директно от качените снимки, за да можеш да

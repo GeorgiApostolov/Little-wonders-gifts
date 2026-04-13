@@ -30,7 +30,14 @@ type AdminOrder = {
   selectedDecorationLabel?: string;
   babyName?: string;
   customerName?: string;
+  customerPhone?: string;
   customerEmail?: string;
+  deliveryCourier?: string;
+  deliveryType?: string;
+  deliveryAddress?: string;
+  deliveryOfficeId?: string;
+  deliveryOfficeLabel?: string;
+  paymentMethod?: string;
   createdAt?: string;
   updatedAt?: string;
   confirmedAt?: string;
@@ -59,7 +66,13 @@ type OrderEditForm = {
   selectedDecorationLabel: string;
   babyName: string;
   customerName: string;
+  customerPhone: string;
   customerEmail: string;
+  deliveryCourier: string;
+  deliveryType: string;
+  deliveryAddress: string;
+  deliveryOfficeId: string;
+  deliveryOfficeLabel: string;
 };
 
 const adminTokenStorageKey = "lw_admin_token";
@@ -90,6 +103,38 @@ function getOrderStatusClasses(status?: string) {
   }
 
   return "bg-amber-100 text-amber-900";
+}
+
+function getCourierLabel(value?: string) {
+  if (value === "econt") {
+    return "Еконт";
+  }
+
+  if (value === "speedy") {
+    return "Спиди";
+  }
+
+  return "-";
+}
+
+function getDeliveryTypeLabel(value?: string) {
+  if (value === "office") {
+    return "До офис";
+  }
+
+  if (value === "address") {
+    return "До адрес";
+  }
+
+  return "-";
+}
+
+function getPaymentMethodLabel(value?: string) {
+  if (value === "cod") {
+    return "Наложен платеж";
+  }
+
+  return value || "-";
 }
 
 function readStoredAdminToken() {
@@ -155,7 +200,13 @@ export default function Admin() {
     selectedDecorationLabel: "",
     babyName: "",
     customerName: "",
+    customerPhone: "",
     customerEmail: "",
+    deliveryCourier: "",
+    deliveryType: "",
+    deliveryAddress: "",
+    deliveryOfficeId: "",
+    deliveryOfficeLabel: "",
   });
 
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
@@ -244,7 +295,13 @@ export default function Admin() {
       selectedDecorationLabel: order.selectedDecorationLabel || "",
       babyName: order.babyName || "",
       customerName: order.customerName || "",
+      customerPhone: order.customerPhone || "",
       customerEmail: order.customerEmail || "",
+      deliveryCourier: order.deliveryCourier || "",
+      deliveryType: order.deliveryType || "",
+      deliveryAddress: order.deliveryAddress || "",
+      deliveryOfficeId: order.deliveryOfficeId || "",
+      deliveryOfficeLabel: order.deliveryOfficeLabel || "",
     });
   }
 
@@ -794,7 +851,27 @@ export default function Admin() {
                           <strong>Клиент:</strong> {order.customerName || "-"}
                         </p>
                         <p>
+                          <strong>Телефон:</strong> {order.customerPhone || "-"}
+                        </p>
+                        <p>
                           <strong>Имейл:</strong> {order.customerEmail || "Няма въведен имейл"}
+                        </p>
+                        <p>
+                          <strong>Куриер:</strong> {getCourierLabel(order.deliveryCourier)}
+                        </p>
+                        <p>
+                          <strong>Тип доставка:</strong>{" "}
+                          {getDeliveryTypeLabel(order.deliveryType)}
+                        </p>
+                        <p>
+                          <strong>Данни за доставка:</strong>{" "}
+                          {order.deliveryType === "office"
+                            ? order.deliveryOfficeLabel || "-"
+                            : order.deliveryAddress || "-"}
+                        </p>
+                        <p>
+                          <strong>Плащане:</strong>{" "}
+                          {getPaymentMethodLabel(order.paymentMethod)}
                         </p>
                         <p>
                           <strong>Потвърдена:</strong> {order.confirmedAt || "-"}
@@ -977,6 +1054,118 @@ export default function Admin() {
                                 className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                               />
                             </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                              <label className="text-sm font-heading font-bold">
+                                Телефон
+                              </label>
+                              <input
+                                type="text"
+                                value={orderEditForm.customerPhone}
+                                onChange={(event) =>
+                                  updateOrderEditField(
+                                    "customerPhone",
+                                    event.target.value,
+                                  )
+                                }
+                                maxLength={20}
+                                className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <label className="text-sm font-heading font-bold">
+                                Куриер
+                              </label>
+                              <input
+                                type="text"
+                                value={orderEditForm.deliveryCourier}
+                                onChange={(event) =>
+                                  updateOrderEditField(
+                                    "deliveryCourier",
+                                    event.target.value,
+                                  )
+                                }
+                                maxLength={20}
+                                className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                              <label className="text-sm font-heading font-bold">
+                                Тип доставка
+                              </label>
+                              <input
+                                type="text"
+                                value={orderEditForm.deliveryType}
+                                onChange={(event) =>
+                                  updateOrderEditField(
+                                    "deliveryType",
+                                    event.target.value,
+                                  )
+                                }
+                                maxLength={20}
+                                className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <label className="text-sm font-heading font-bold">
+                                Офис ID
+                              </label>
+                              <input
+                                type="text"
+                                value={orderEditForm.deliveryOfficeId}
+                                onChange={(event) =>
+                                  updateOrderEditField(
+                                    "deliveryOfficeId",
+                                    event.target.value,
+                                  )
+                                }
+                                maxLength={80}
+                                className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2">
+                            <label className="text-sm font-heading font-bold">
+                              Офис (име)
+                            </label>
+                            <input
+                              type="text"
+                              value={orderEditForm.deliveryOfficeLabel}
+                              onChange={(event) =>
+                                updateOrderEditField(
+                                  "deliveryOfficeLabel",
+                                  event.target.value,
+                                )
+                              }
+                              maxLength={220}
+                              className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                            />
+                          </div>
+
+                          <div className="grid gap-2">
+                            <label className="text-sm font-heading font-bold">
+                              Адрес за доставка
+                            </label>
+                            <input
+                              type="text"
+                              value={orderEditForm.deliveryAddress}
+                              onChange={(event) =>
+                                updateOrderEditField(
+                                  "deliveryAddress",
+                                  event.target.value,
+                                )
+                              }
+                              maxLength={220}
+                              className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                            />
                           </div>
 
                           <div className="grid gap-2">

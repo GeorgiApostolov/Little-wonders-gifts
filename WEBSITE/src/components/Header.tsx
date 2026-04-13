@@ -23,14 +23,17 @@ const Header = () => {
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:h-[4.5rem]">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-border/50 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/85 lg:sticky">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4 sm:h-16 lg:h-[4.5rem]">
         {/* Logo */}
-        <Link to="/" className="flex h-16 items-center overflow-hidden lg:h-[4.5rem]">
+        <Link
+          to="/"
+          className="flex h-14 items-center overflow-hidden sm:h-16 lg:h-[4.5rem]"
+        >
           <img
             src="/logo.webp"
             alt="Little Wonders Gifts"
-            className="h-12 w-auto object-contain sm:h-14 lg:h-16"
+            className="h-10 w-auto object-contain sm:h-12 lg:h-16"
           />
         </Link>
 
@@ -96,7 +99,7 @@ const Header = () => {
 
       {/* Mobile nav */}
       {open && (
-        <nav className="border-t border-border/50 bg-background/95 px-4 pb-4 backdrop-blur-md lg:hidden">
+        <nav className="max-h-[calc(100svh-3.5rem)] overflow-y-auto border-t border-border/50 bg-background/95 px-4 pb-4 pt-2 backdrop-blur-md lg:hidden">
           {navItems.map((item) => (
             <Link
               key={item.to}

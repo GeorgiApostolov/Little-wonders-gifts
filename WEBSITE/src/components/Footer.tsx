@@ -12,7 +12,7 @@ const Footer = () => {
               <img
                 src="/logo.webp"
                 alt="Little Wonders Gifts"
-                className="h-20 w-auto object-contain sm:h-24 md:h-28"
+                className="h-16 w-auto object-contain sm:h-24 md:h-28"
               />
             </Link>
             <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted-foreground md:mx-0">
@@ -69,7 +69,7 @@ const Footer = () => {
                 <Facebook className="w-5 h-5" />
               </a>
               <a
-                href="mailto:hello@littlewondersgifts.com"
+                href="mailto:maria_magdalena2003@abv.bg"
                 aria-label="Имейл"
                 className="w-10 h-10 rounded-full bg-background flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all hover:scale-110"
               >
@@ -77,13 +77,40 @@ const Footer = () => {
               </a>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              hello@littlewondersgifts.com
+              maria_magdalena2003@abv.bg
             </p>
           </div>
         </div>
 
         <div className="mt-8 border-t border-border/30 pt-6 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Всички права запазени. 💗
+          <div className="mb-3 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              to="/obshti-usloviya"
+              className="font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              Общи условия
+            </Link>
+            <Link
+              to="/poveritelnost"
+              className="font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              Поверителност
+            </Link>
+            <Link
+              to="/biskvitki"
+              className="font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              Бисквитки
+            </Link>
+            <Link
+              to="/gdpr-prava"
+              className="font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              GDPR права
+            </Link>
+          </div>
+          <p>© {new Date().getFullYear()} Всички права запазени. 💗</p>
+          <p className="mt-1">Изработен сайта от VIGODE</p>
         </div>
       </div>
     </footer>

@@ -17,7 +17,13 @@ type AccountOrder = {
   selectedDecorationLabel?: string;
   babyName?: string;
   customerName?: string;
+  customerPhone?: string;
   customerEmail?: string;
+  deliveryCourier?: string;
+  deliveryType?: string;
+  deliveryAddress?: string;
+  deliveryOfficeLabel?: string;
+  paymentMethod?: string;
   createdAt?: string;
   status?: string;
 };
@@ -30,6 +36,38 @@ const orderStatusLabels: Record<string, string> = {
 
 function getOrderStatusLabel(status?: string) {
   return orderStatusLabels[status || ""] || "Нова";
+}
+
+function getCourierLabel(value?: string) {
+  if (value === "econt") {
+    return "Еконт";
+  }
+
+  if (value === "speedy") {
+    return "Спиди";
+  }
+
+  return "-";
+}
+
+function getDeliveryTypeLabel(value?: string) {
+  if (value === "office") {
+    return "До офис";
+  }
+
+  if (value === "address") {
+    return "До адрес";
+  }
+
+  return "-";
+}
+
+function getPaymentMethodLabel(value?: string) {
+  if (value === "cod") {
+    return "Наложен платеж";
+  }
+
+  return value || "-";
 }
 
 export default function Profile() {
@@ -66,10 +104,7 @@ export default function Profile() {
 
         if (!response.ok || payload.status !== "ok") {
           throw new Error(
-            parseApiErrorMessage(
-              payload,
-              "Неуспешно зареждане на поръчките.",
-            ),
+            parseApiErrorMessage(payload, "Неуспешно зареждане на поръчките."),
           );
         }
 
@@ -104,10 +139,10 @@ export default function Profile() {
   }
 
   return (
-    <main className="py-16 md:py-24">
-      <div className="container mx-auto px-4 max-w-5xl">
-        <div className="bg-card border border-border/50 rounded-3xl p-8 md:p-10 shadow-sm mb-8">
-          <h1 className="font-heading font-extrabold text-3xl mb-2">
+    <main className="py-12 sm:py-16 md:py-24">
+      <div className="container mx-auto max-w-5xl px-4">
+        <div className="mb-8 rounded-3xl border border-border/50 bg-card p-5 shadow-sm sm:p-7 md:p-10">
+          <h1 className="mb-2 font-heading text-2xl font-extrabold sm:text-3xl">
             Моят профил
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -115,8 +150,8 @@ export default function Profile() {
           </p>
         </div>
 
-        <div className="bg-card border border-border/50 rounded-3xl p-8 md:p-10 shadow-sm">
-          <h2 className="font-heading font-extrabold text-2xl mb-6">
+        <div className="rounded-3xl border border-border/50 bg-card p-5 shadow-sm sm:p-7 md:p-10">
+          <h2 className="mb-6 font-heading text-xl font-extrabold sm:text-2xl">
             Моите поръчки
           </h2>
 
@@ -143,7 +178,7 @@ export default function Profile() {
               {orders.map((order) => (
                 <article
                   key={order.orderId}
-                  className="rounded-2xl border border-border/60 p-5 bg-background"
+                  className="rounded-2xl border border-border/60 bg-background p-4 sm:p-5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <p className="font-heading font-bold text-base">
@@ -178,6 +213,29 @@ export default function Profile() {
                       <strong>Име на бебето:</strong> {order.babyName}
                     </p>
                   ) : null}
+                  {order.customerPhone ? (
+                    <p className="text-sm mb-1">
+                      <strong>Телефон:</strong> {order.customerPhone}
+                    </p>
+                  ) : null}
+                  <p className="text-sm mb-1">
+                    <strong>Куриер:</strong>{" "}
+                    {getCourierLabel(order.deliveryCourier)}
+                  </p>
+                  <p className="text-sm mb-1">
+                    <strong>Тип доставка:</strong>{" "}
+                    {getDeliveryTypeLabel(order.deliveryType)}
+                  </p>
+                  <p className="text-sm mb-1">
+                    <strong>Данни за доставка:</strong>{" "}
+                    {order.deliveryType === "office"
+                      ? order.deliveryOfficeLabel || "-"
+                      : order.deliveryAddress || "-"}
+                  </p>
+                  <p className="text-sm mb-1">
+                    <strong>Плащане:</strong>{" "}
+                    {getPaymentMethodLabel(order.paymentMethod)}
+                  </p>
                   {order.createdAt ? (
                     <p className="text-sm text-muted-foreground mt-2">
                       Създадена: {order.createdAt}

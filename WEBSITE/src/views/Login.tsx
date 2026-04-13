@@ -38,9 +38,9 @@ const Login = () => {
   };
 
   return (
-    <main className="py-16 md:py-24">
+    <main className="py-12 sm:py-16 md:py-24">
       <div className="container mx-auto px-4">
-        <div className="max-w-md mx-auto bg-card rounded-3xl border border-border/50 p-8 md:p-10 shadow-sm">
+        <div className="mx-auto max-w-md rounded-3xl border border-border/50 bg-card p-5 shadow-sm sm:p-7 md:p-10">
           <h1 className="font-heading font-extrabold text-3xl mb-2 text-center">
             Вход в профил
           </h1>
